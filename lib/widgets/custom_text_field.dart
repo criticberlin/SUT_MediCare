@@ -22,7 +22,7 @@ class CustomTextField extends StatefulWidget {
   final bool autoFocus;
 
   const CustomTextField({
-    Key? key,
+    super.key,
     this.label,
     this.hint,
     this.errorText,
@@ -40,7 +40,7 @@ class CustomTextField extends StatefulWidget {
     this.onTap,
     this.validator,
     this.autoFocus = false,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();

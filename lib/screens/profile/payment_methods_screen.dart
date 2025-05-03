@@ -181,7 +181,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        ..._paymentMethods.map((method) => _buildPaymentMethodCard(method)).toList(),
+        ..._paymentMethods.map((method) => _buildPaymentMethodCard(method)),
       ],
     );
   }

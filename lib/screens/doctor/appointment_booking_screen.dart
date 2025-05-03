@@ -9,9 +9,9 @@ class AppointmentBookingScreen extends StatefulWidget {
   final Doctor doctor;
 
   const AppointmentBookingScreen({
-    Key? key,
+    super.key,
     required this.doctor,
-  }) : super(key: key);
+  });
 
   @override
   State<AppointmentBookingScreen> createState() => _AppointmentBookingScreenState();
@@ -26,7 +26,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   String _selectedDuration = '30 mins';
   String _selectedType = 'In-person';
   bool _isLoading = false;
-  String _currency = 'EGP';
+  final String _currency = 'EGP';
 
   // Fee map based on appointment type
   final Map<String, double> _feeMap = {

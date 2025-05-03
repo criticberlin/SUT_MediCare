@@ -287,7 +287,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                 ),
               ),
             ),
-            ...sectionNotifications.map((notification) => _buildNotificationItem(notification)).toList(),
+            ...sectionNotifications.map((notification) => _buildNotificationItem(notification)),
           ],
         );
       },
