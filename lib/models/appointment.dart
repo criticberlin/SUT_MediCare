@@ -33,7 +33,7 @@ class Appointment {
       Appointment(
         id: '1',
         doctorId: '1',
-        doctorName: 'Dr. Jason Response',
+        doctorName: 'Dr. Ahmed Kamal',
         doctorSpecialty: 'Orthopedic Surgeon',
         doctorImage: 'https://img.freepik.com/free-photo/smiling-doctor-with-strethoscope-isolated-grey_651396-974.jpg',
         date: DateTime.now().add(const Duration(days: 2)),
@@ -45,7 +45,7 @@ class Appointment {
       Appointment(
         id: '2',
         doctorId: '2',
-        doctorName: 'Dr. Dianne Ameter',
+        doctorName: 'Dr. Nour El-Sayed',
         doctorSpecialty: 'Neurosurgeon',
         doctorImage: 'https://img.freepik.com/free-photo/portrait-female-doctor-holding-plus-window_23-2150572356.jpg',
         date: DateTime.now().add(const Duration(days: 5)),
@@ -57,8 +57,8 @@ class Appointment {
       Appointment(
         id: '3',
         doctorId: '4',
-        doctorName: 'Dr. Fletch Skinner',
-        doctorSpecialty: 'Heart Surgeon',
+        doctorName: 'Dr. Kareem Hossam',
+        doctorSpecialty: 'Cardiologist',
         doctorImage: 'https://img.freepik.com/free-photo/male-nurse-with-stethoscope-uniform_23-2148124598.jpg',
         date: DateTime.now().subtract(const Duration(days: 10)),
         time: '9:15 AM',
@@ -70,7 +70,7 @@ class Appointment {
       Appointment(
         id: '4',
         doctorId: '3',
-        doctorName: 'Dr. Norman Gordon',
+        doctorName: 'Dr. Tarek Mahmoud',
         doctorSpecialty: 'Infectious Diseases',
         doctorImage: 'https://img.freepik.com/free-photo/doctor-smiling-offering-handshake_23-2148085248.jpg',
         date: DateTime.now().subtract(const Duration(days: 5)),

@@ -732,7 +732,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> with SingleTick
                   color: AppTheme.primaryColor,
                 ),
                 children: [
-                  const TextSpan(text: '\$100'),
+                  const TextSpan(text: 'EGP 1800'),
                   TextSpan(
                     text: '/hour',
                     style: TextStyle(

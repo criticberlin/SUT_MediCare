@@ -144,7 +144,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Dr. ${widget.doctor.name}',
+                  widget.doctor.name,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,

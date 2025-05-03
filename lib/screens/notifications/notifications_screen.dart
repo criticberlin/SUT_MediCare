@@ -25,7 +25,7 @@ class NotificationItem {
       NotificationItem(
         id: '1',
         title: 'Appointment Confirmed',
-        message: 'Your appointment with Dr. Sarah Johnson has been confirmed for tomorrow at 10:00 AM.',
+        message: 'Your appointment with Dr. Ahmed Kamal has been confirmed for tomorrow at 10:00 AM.',
         time: DateTime.now().subtract(const Duration(hours: 2)),
         isRead: false,
         type: NotificationType.appointment,
@@ -33,7 +33,7 @@ class NotificationItem {
       NotificationItem(
         id: '2',
         title: 'New Message',
-        message: 'Dr. Michael Smith sent you a message regarding your recent lab results.',
+        message: 'Dr. Tarek Mahmoud sent you a message regarding your recent lab results.',
         time: DateTime.now().subtract(const Duration(hours: 5)),
         isRead: true,
         type: NotificationType.message,
@@ -49,7 +49,7 @@ class NotificationItem {
       NotificationItem(
         id: '4',
         title: 'Appointment Reminder',
-        message: 'Your appointment with Dr. Emily Wilson is scheduled for tomorrow at 2:30 PM.',
+        message: 'Your appointment with Dr. Nour El-Sayed is scheduled for tomorrow at 2:30 PM.',
         time: DateTime.now().subtract(const Duration(days: 1, hours: 6)),
         isRead: true,
         type: NotificationType.appointment,

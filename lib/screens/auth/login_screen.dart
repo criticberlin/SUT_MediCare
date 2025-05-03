@@ -287,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               _buildSocialButton(
                                 icon: Icons.facebook,
-                                backgroundColor: const Color(0xFF3B5998),
+                                backgroundColor: AppTheme.primaryColor,
                                 iconColor: Colors.white,
                                 onTap: () {},
                               ),
@@ -385,8 +385,8 @@ class _LoginScreenState extends State<LoginScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(50),
       child: Container(
-        width: 55,
-        height: 55,
+        width: 62,
+        height: 62,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,

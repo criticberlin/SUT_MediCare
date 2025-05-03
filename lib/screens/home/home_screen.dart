@@ -6,6 +6,7 @@ import '../../utils/theme/app_theme.dart';
 import '../../routes.dart';
 import '../../widgets/doctor_card.dart';
 import '../../widgets/appointment_card.dart';
+import '../../utils/extensions.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -308,15 +309,23 @@ class _HomeScreenState extends State<HomeScreen> {
             appointmentTime: appointment.time,
             status: appointment.status,
             onTap: () {
+              final doctor = _getDoctorFromAppointment(appointment);
               Navigator.pushNamed(
                 context,
                 AppRoutes.appointmentBooking,
-                arguments: appointment,
+                arguments: doctor,
               );
             },
           );
         }),
       ],
+    );
+  }
+
+  Doctor _getDoctorFromAppointment(Appointment appointment) {
+    return _doctors.firstWhere(
+      (doctor) => doctor.id == appointment.doctorId,
+      orElse: () => _doctors.first,
     );
   }
 
@@ -535,22 +544,86 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     Container(
-                      height: 50,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF7F8F9),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade200,
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: TabBar(
                         indicator: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          color: AppTheme.primaryColor,
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.primaryColor, Color(0xFF2A78D8)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                              spreadRadius: 0,
+                            ),
+                          ],
                         ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicatorPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                        dividerColor: Colors.transparent,
                         labelColor: Colors.white,
                         unselectedLabelColor: AppTheme.textSecondaryColor,
-                        tabs: const [
-                          Tab(text: 'Upcoming'),
-                          Tab(text: 'Completed'),
-                          Tab(text: 'Cancelled'),
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+                        labelPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                        tabs: [
+                          Tab(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.access_time_rounded, size: 18),
+                                SizedBox(width: 8),
+                                Text('Upcoming'),
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.check_circle_outline_rounded, size: 18),
+                                SizedBox(width: 8),
+                                Text('Completed'),
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.cancel_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('Cancelled'),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -585,23 +658,61 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.calendar_today_outlined,
-              color: AppTheme.primaryColor,
-              size: 48,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: _getStatusColor(status).withOpacity(0.1),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _getStatusColor(status).withOpacity(0.2),
+                    blurRadius: 15,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(
+                _getStatusIcon(status),
+                color: _getStatusColor(status),
+                size: 48,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
-              'No ${status.name} Appointments',
-              style: Theme.of(context).textTheme.titleMedium,
+              'No ${status.name.capitalize()} Appointments',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Text(
+              _getEmptyStatusMessage(status),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondaryColor,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
             if (status == AppointmentStatus.upcoming)
-              Text(
-                'Book your appointment now',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.doctorList);
+                },
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Book Appointment'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.primaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                  shadowColor: AppTheme.primaryColor.withOpacity(0.3),
+                ),
               ),
           ],
         ),
@@ -609,26 +720,64 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.only(top: 12, bottom: 16),
       itemCount: filteredAppointments.length,
       itemBuilder: (context, index) {
         final appointment = filteredAppointments[index];
-        return AppointmentCard(
-          doctorName: appointment.doctorName,
-          doctorSpecialty: appointment.doctorSpecialty,
-          doctorImage: appointment.doctorImage,
-          appointmentDate: appointment.date,
-          appointmentTime: appointment.time,
-          status: appointment.status,
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.appointmentBooking,
-              arguments: appointment,
-            );
-          },
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: AppointmentCard(
+            doctorName: appointment.doctorName,
+            doctorSpecialty: appointment.doctorSpecialty,
+            doctorImage: appointment.doctorImage,
+            appointmentDate: appointment.date,
+            appointmentTime: appointment.time,
+            status: appointment.status,
+            onTap: () {
+              final doctor = _getDoctorFromAppointment(appointment);
+              Navigator.pushNamed(
+                context,
+                AppRoutes.appointmentBooking,
+                arguments: doctor,
+              );
+            },
+          ),
         );
       },
     );
+  }
+
+  String _getEmptyStatusMessage(AppointmentStatus status) {
+    switch (status) {
+      case AppointmentStatus.upcoming:
+        return 'You don\'t have any upcoming appointments.\nBook a consultation with a specialist now!';
+      case AppointmentStatus.completed:
+        return 'You haven\'t had any appointments yet.\nStart by booking your first consultation.';
+      case AppointmentStatus.cancelled:
+        return 'You don\'t have any cancelled appointments.\nThis is where your cancelled appointments will appear.';
+    }
+  }
+
+  IconData _getStatusIcon(AppointmentStatus status) {
+    switch (status) {
+      case AppointmentStatus.upcoming:
+        return Icons.access_time_rounded;
+      case AppointmentStatus.completed:
+        return Icons.check_circle_outline_rounded;
+      case AppointmentStatus.cancelled:
+        return Icons.cancel_outlined;
+    }
+  }
+
+  Color _getStatusColor(AppointmentStatus status) {
+    switch (status) {
+      case AppointmentStatus.upcoming:
+        return AppTheme.primaryColor;
+      case AppointmentStatus.completed:
+        return AppTheme.successColor;
+      case AppointmentStatus.cancelled:
+        return AppTheme.errorColor;
+    }
   }
 
   Widget _buildChatTab() {
@@ -746,14 +895,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.person_outline,
                 title: 'Edit Profile',
                 onTap: () {
-                  // Navigate to edit profile
+                  Navigator.pushNamed(context, AppRoutes.editProfile);
                 },
               ),
               _buildProfileMenuItem(
                 icon: Icons.history,
                 title: 'Medical History',
                 onTap: () {
-                  // Navigate to medical history
+                  Navigator.pushNamed(context, AppRoutes.medicalHistory);
                 },
               ),
               _buildProfileMenuItem(
@@ -767,7 +916,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.payment,
                 title: 'Payment Methods',
                 onTap: () {
-                  // Navigate to payment methods
+                  Navigator.pushNamed(context, AppRoutes.paymentMethods);
                 },
               ),
               _buildProfileMenuItem(
@@ -781,14 +930,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.help_outline,
                 title: 'Help & Support',
                 onTap: () {
-                  // Navigate to help and support
+                  Navigator.pushNamed(context, AppRoutes.helpSupport);
                 },
               ),
               _buildProfileMenuItem(
                 icon: Icons.exit_to_app,
                 title: 'Logout',
                 onTap: () {
-                  // Handle logout
+                  _showLogoutConfirmation(context);
                 },
                 isLast: true,
               ),
@@ -805,28 +954,120 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
     bool isLast = false,
   }) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(
-            icon,
-            color: AppTheme.primaryColor,
-          ),
-          title: Text(title),
-          trailing: const Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-          ),
-          onTap: onTap,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade100,
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        if (!isLast)
-          const Divider(
-            height: 1,
-            thickness: 1,
-            indent: 16,
-            endIndent: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: AppTheme.primaryColor,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                  ),
+                  if (title == 'Logout')
+                    Icon(
+                      Icons.logout,
+                      size: 20,
+                      color: AppTheme.errorColor,
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-      ],
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Perform logout actions
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.pushNamedAndRemoveUntil(
+                  context, 
+                  AppRoutes.login,
+                  (route) => false,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
     );
   }
 } 

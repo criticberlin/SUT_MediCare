@@ -1,16 +1,44 @@
-# my_app
+# SUT_MediCare
 
-A new Flutter project.
+A telemedicine Flutter application that connects patients with healthcare providers.
+
+## Features
+
+- User authentication (login/register)
+- Browse and search for doctors
+- View doctor profiles and details
+- Book medical appointments
+- Chat with healthcare providers
+- Video consultations
+- Manage medical history
+- Profile management
+- Payment methods management
+- Notifications
+- Help and support
+
+## Technical Overview
+
+SUT_MediCare is built with Flutter, providing a cross-platform solution for both iOS and Android. The application follows a structured architecture with clean separation of concerns:
+
+- Screens: UI components for different app sections
+- Models: Data structures for doctors, users, appointments, etc.
+- Services: Backend connectivity and business logic
+- Widgets: Reusable UI components
+- Utils: Helper functions and utilities
+- Constants: App-wide configuration settings
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+To run this project:
 
-A few resources to get you started if this is your first Flutter project:
+1. Ensure you have Flutter installed on your machine
+2. Clone the repository
+3. Run `flutter pub get` to install dependencies
+4. Connect a device or start an emulator
+5. Run `flutter run` to start the application
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Resources
 
-For help getting started with Flutter development, view the
+For help with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.

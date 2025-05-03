@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/message.dart';
 import '../../utils/theme/app_theme.dart';
 import '../../routes.dart';
+import '../../models/doctor.dart';
 
 class ChatScreen extends StatefulWidget {
   final String doctorId;
@@ -46,10 +47,24 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _loadChatData() {
-    final chatPreviews = Message.getDummyChatPreviews();
-    _chatData = chatPreviews.firstWhere(
-      (chat) => chat.doctorId == widget.doctorId,
-      orElse: () => chatPreviews.first,
+    final doctor = _getDoctor();
+    // Get the chat data from doctor data to ensure consistency
+    _chatData = ChatPreview(
+      doctorId: doctor.id,
+      doctorName: doctor.name,
+      doctorSpecialty: doctor.specialty,
+      doctorImage: doctor.imageUrl,
+      lastMessage: _getLastMessage(),
+      timestamp: DateTime.now().subtract(const Duration(days: 1)),
+      unreadCount: 0
+    );
+  }
+
+  // Get doctor object from doctorId
+  Doctor _getDoctor() {
+    return Doctor.getDummyDoctors().firstWhere(
+      (doctor) => doctor.id == widget.doctorId,
+      orElse: () => Doctor.getDummyDoctors().first,
     );
   }
 
@@ -95,6 +110,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get doctor object to ensure we're using the most up-to-date data
+    final doctor = _getDoctor();
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -111,10 +129,10 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Row(
           children: [
             Hero(
-              tag: 'doctor_${_chatData.doctorId}',
+              tag: 'doctor_${doctor.id}',
               child: CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage(_chatData.doctorImage),
+                backgroundImage: NetworkImage(doctor.imageUrl),
                 onBackgroundImageError: (_, __) {},
               ),
             ),
@@ -124,7 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _chatData.doctorName,
+                    'Dr. ${doctor.name}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -133,7 +151,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    _chatData.doctorSpecialty,
+                    doctor.specialty,
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondaryColor,
@@ -162,7 +180,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Navigator.pushNamed(
                 context,
                 AppRoutes.videoCall,
-                arguments: widget.doctorId,
+                arguments: doctor,
               );
             },
           ),
@@ -236,9 +254,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageItem(Message message, bool showAvatar) {
     final isSent = message.isSent;
+    final doctor = _getDoctor();
 
     if (message.type == MessageType.image) {
-      return _buildImageMessage(message, isSent, showAvatar);
+      return _buildImageMessage(message, isSent, showAvatar, doctor);
     }
 
     return Padding(
@@ -254,7 +273,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (!isSent && showAvatar) ...[
             CircleAvatar(
               radius: 16,
-              backgroundImage: NetworkImage(_chatData.doctorImage),
+              backgroundImage: NetworkImage(doctor.imageUrl),
               onBackgroundImageError: (_, __) {},
             ),
             const SizedBox(width: 8),
@@ -342,7 +361,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildImageMessage(Message message, bool isSent, bool showAvatar) {
+  Widget _buildImageMessage(Message message, bool isSent, bool showAvatar, Doctor doctor) {
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
@@ -358,7 +377,7 @@ class _ChatScreenState extends State<ChatScreen> {
             if (!isSent && showAvatar) ...[
               CircleAvatar(
                 radius: 16,
-                backgroundImage: NetworkImage(_chatData.doctorImage),
+                backgroundImage: NetworkImage(doctor.imageUrl),
                 onBackgroundImageError: (_, __) {},
               ),
               const SizedBox(width: 8),
@@ -606,5 +625,24 @@ class _ChatScreenState extends State<ChatScreen> {
     final hour = timestamp.hour.toString().padLeft(2, '0');
     final minute = timestamp.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  // Helper method to get the most recent message for each doctor
+  String _getLastMessage() {
+    final doctor = _getDoctor();
+    switch (doctor.id) {
+      case '1': // Ahmed Kamal
+        return 'Great! I\'ll see you soon. Take care.';
+      case '2': // Nour El-Sayed 
+        return 'Please don\'t forget to bring your previous scan results.';
+      case '3': // Tarek Mahmoud
+        return 'Your test results look good. No need to worry.';
+      case '4': // Kareem Hossam
+        return 'Remember to take your medication regularly.';
+      case '5': // Yasmine Adel
+        return 'I\'ll see you at your next appointment.';
+      default:
+        return 'Thank you for your message.';
+    }
   }
 } 

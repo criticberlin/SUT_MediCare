@@ -23,7 +23,8 @@ class Message {
 
   // Get dummy chat messages
   static List<Message> getDummyChatMessages(String doctorId) {
-    return [
+    // Base conversation template
+    List<Message> messages = [
       Message(
         id: '1',
         senderId: 'doctor$doctorId',
@@ -134,6 +135,8 @@ class Message {
         type: MessageType.text,
       ),
     ];
+    
+    return messages;
   }
 
   // Get dummy chat list of recent doctors
@@ -141,7 +144,7 @@ class Message {
     return [
       ChatPreview(
         doctorId: '1',
-        doctorName: 'Dr. Jason Response',
+        doctorName: 'Dr. Ahmed Kamal',
         doctorSpecialty: 'Orthopedic Surgeon',
         doctorImage: 'https://img.freepik.com/free-photo/smiling-doctor-with-strethoscope-isolated-grey_651396-974.jpg',
         lastMessage: 'Great! I\'ll see you soon. Take care.',
@@ -150,7 +153,7 @@ class Message {
       ),
       ChatPreview(
         doctorId: '2',
-        doctorName: 'Dr. Dianne Ameter',
+        doctorName: 'Dr. Nour El-Sayed',
         doctorSpecialty: 'Neurosurgeon',
         doctorImage: 'https://img.freepik.com/free-photo/portrait-female-doctor-holding-plus-window_23-2150572356.jpg',
         lastMessage: 'Please don\'t forget to bring your previous scan results.',
@@ -159,7 +162,7 @@ class Message {
       ),
       ChatPreview(
         doctorId: '3',
-        doctorName: 'Dr. Norman Gordon',
+        doctorName: 'Dr. Tarek Mahmoud',
         doctorSpecialty: 'Infectious Diseases',
         doctorImage: 'https://img.freepik.com/free-photo/doctor-smiling-offering-handshake_23-2148085248.jpg',
         lastMessage: 'Your test results look good. No need to worry.',

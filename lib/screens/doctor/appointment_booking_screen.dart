@@ -26,6 +26,14 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   String _selectedDuration = '30 mins';
   String _selectedType = 'In-person';
   bool _isLoading = false;
+  String _currency = 'EGP';
+
+  // Fee map based on appointment type
+  final Map<String, double> _feeMap = {
+    'In-person': 1800.0,
+    'Video Call': 1200.0,
+    'Voice Call': 900.0,
+  };
 
   final List<String> _availableTimes = [
     '09:00 AM',
@@ -521,6 +529,28 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   }
 
   Widget _buildPriceAndBookButton() {
+    // Get fee based on selected appointment type
+    final double fee = _feeMap[_selectedType] ?? 1800.0;
+    
+    // Adjust fee based on duration
+    double durationMultiplier = 1.0;
+    switch (_selectedDuration) {
+      case '15 mins':
+        durationMultiplier = 0.75;
+        break;
+      case '30 mins':
+        durationMultiplier = 1.0;
+        break;
+      case '45 mins':
+        durationMultiplier = 1.25;
+        break;
+      case '60 mins':
+        durationMultiplier = 1.5;
+        break;
+    }
+    
+    final double finalFee = fee * durationMultiplier;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
@@ -537,14 +567,14 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
               ),
               const SizedBox(height: 4),
               RichText(
-                text: const TextSpan(
-                  style: TextStyle(
+                text: TextSpan(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primaryColor,
                   ),
                   children: [
-                    TextSpan(text: '\$100'),
+                    TextSpan(text: '$_currency ${finalFee.toStringAsFixed(0)}'),
                   ],
                 ),
               ),
