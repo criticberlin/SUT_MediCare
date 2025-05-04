@@ -12,6 +12,7 @@ class Doctor {
   final List<String> workingHours;
   final List<String> services;
   final List<Review> reviews;
+  final bool isOnline;
 
   Doctor({
     required this.id,
@@ -27,6 +28,7 @@ class Doctor {
     required this.workingHours,
     required this.services,
     required this.reviews,
+    this.isOnline = false,
   });
 
   // Dummy data for doctor list
@@ -59,6 +61,7 @@ class Doctor {
             date: DateTime.now().subtract(const Duration(days: 12)),
           ),
         ],
+        isOnline: true,
       ),
       Doctor(
         id: '2',
@@ -81,6 +84,7 @@ class Doctor {
             date: DateTime.now().subtract(const Duration(days: 8)),
           ),
         ],
+        isOnline: false,
       ),
       Doctor(
         id: '3',
@@ -103,6 +107,7 @@ class Doctor {
             date: DateTime.now().subtract(const Duration(days: 20)),
           ),
         ],
+        isOnline: true,
       ),
       Doctor(
         id: '4',
@@ -125,6 +130,7 @@ class Doctor {
             date: DateTime.now().subtract(const Duration(days: 30)),
           ),
         ],
+        isOnline: false,
       ),
       Doctor(
         id: '5',
@@ -147,6 +153,7 @@ class Doctor {
             date: DateTime.now().subtract(const Duration(days: 15)),
           ),
         ],
+        isOnline: true,
       ),
     ];
   }

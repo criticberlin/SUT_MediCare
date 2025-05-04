@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../utils/theme/app_theme.dart';
-import 'dart:math' as math;
 
 class NotificationItem {
   final String id;
@@ -123,10 +124,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
     final unreadCount = _notifications.where((notif) => !notif.isRead).length;
     
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Notifications',
@@ -137,16 +139,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
         elevation: 0,
         actions: [
           Badge(
-            label: Text('$unreadCount'),
+            label: Text(
+              '$unreadCount',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             isLabelVisible: unreadCount > 0,
+            backgroundColor: AppTheme.primaryColor,
             child: IconButton(
-              icon: const Icon(Icons.check_circle_outline),
+              icon: Icon(
+                Icons.check_circle_outline,
+                color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+              ),
               onPressed: _markAllAsRead,
               tooltip: 'Mark all as read',
             ),
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: Icon(
+              Icons.more_vert,
+              color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+            ),
             onSelected: (value) {
               if (value == 'clear') {
                 setState(() {
@@ -155,14 +171,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                 });
               }
             },
+            color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'clear',
                 child: Row(
                   children: [
-                    Icon(Icons.delete_sweep, color: AppTheme.textPrimaryColor),
-                    SizedBox(width: 8),
-                    Text('Clear all'),
+                    Icon(
+                      Icons.delete_sweep, 
+                      color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Clear all',
+                      style: TextStyle(
+                        color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -174,7 +199,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
           indicatorColor: AppTheme.primaryColor,
           indicatorWeight: 3,
           labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: AppTheme.textSecondaryColor,
+          unselectedLabelColor: isDarkMode 
+              ? AppTheme.darkTextSecondaryColor 
+              : AppTheme.textSecondaryColor,
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
           tabs: [
             const Tab(text: 'All'),
             Tab(text: 'Unread ($unreadCount)'),
@@ -188,40 +223,58 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   }
 
   Widget _buildEmptyState() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.network(
-            'https://img.freepik.com/free-vector/notification-concept-illustration_114360-4371.jpg',
+          Container(
             height: 180,
-            fit: BoxFit.contain,
+            width: 180,
+            decoration: BoxDecoration(
+              color: isDarkMode ? AppTheme.primaryColor.withValues(red: null, green: null, blue: null, alpha: 0.2) : AppTheme.primaryColor.withValues(red: null, green: null, blue: null, alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Icon(
+                Icons.notifications_off_outlined,
+                size: 80,
+                color: AppTheme.primaryColor,
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
             'No Notifications',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'You don\'t have any notifications yet',
             style: TextStyle(
-              color: AppTheme.textSecondaryColor,
+              color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
               fontSize: 16,
             ),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back, size: 18),
             label: const Text('Back to Home'),
             style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),
+              elevation: 2,
             ),
           ),
         ],
@@ -266,6 +319,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   }
   
   Widget _buildListView(Map<String, List<NotificationItem>> groupedNotifications) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 20),
       itemCount: groupedNotifications.length,
@@ -278,247 +334,332 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-              child: Text(
-                date,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textSecondaryColor,
-                ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? AppTheme.primaryColor.withValues(red: null, green: null, blue: null, alpha: 0.2) : AppTheme.primaryColor.withValues(red: null, green: null, blue: null, alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      date,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Divider(
+                      indent: 8,
+                      color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+                    ),
+                  ),
+                ],
               ),
             ),
-            ...sectionNotifications.map((notification) => _buildNotificationItem(notification)),
+            ...sectionNotifications.asMap().entries.map((entry) {
+              int index = entry.key;
+              NotificationItem notification = entry.value;
+              return _buildNotificationItem(notification, index);
+            }),
           ],
         );
       },
     );
   }
 
-  Widget _buildNotificationItem(NotificationItem notification) {
-    return Dismissible(
-      key: Key(notification.id),
-      background: Container(
-        color: Colors.red.shade100,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(
-          Icons.delete,
-          color: Colors.red,
-          size: 28,
-        ),
-      ),
-      direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        setState(() {
-          _notifications.removeWhere((item) => item.id == notification.id);
-          _filteredNotifications.removeWhere((item) => item.id == notification.id);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Notification deleted'),
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () {
-                setState(() {
-                  final deletedNotification = NotificationItem.getDummyNotifications()
-                      .firstWhere((item) => item.id == notification.id);
-                  _notifications.add(deletedNotification);
-                  _notifications.sort((a, b) => b.time.compareTo(a.time));
-                  
-                  // Update filtered list based on current tab
-                  if (_tabController.index == 0) {
-                    _filteredNotifications = _notifications;
-                  } else {
-                    _filteredNotifications = _notifications.where((notif) => !notif.isRead).toList();
-                  }
-                });
-              },
-            ),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            margin: const EdgeInsets.all(8),
+  Widget _buildNotificationItem(NotificationItem notification, int index) {
+    final theme = Theme.of(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 500 + (index * 50)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
           ),
         );
       },
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: Colors.grey.shade200,
-            width: 1,
+      child: Dismissible(
+        key: Key(notification.id),
+        background: Container(
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(red: null, green: null, blue: null, alpha: isDarkMode ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          child: const Icon(
+            Icons.delete,
+            color: Colors.red,
+            size: 28,
           ),
         ),
-        child: InkWell(
-          onTap: () => _handleNotificationTap(notification),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              color: notification.isRead ? Colors.white : AppTheme.primaryColor.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
+        direction: DismissDirection.endToStart,
+        onDismissed: (direction) {
+          setState(() {
+            _notifications.removeWhere((item) => item.id == notification.id);
+            _filteredNotifications.removeWhere((item) => item.id == notification.id);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Notification deleted',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.black87,
+              action: SnackBarAction(
+                label: 'Undo',
+                textColor: AppTheme.primaryColor,
+                onPressed: () {
+                  setState(() {
+                    final deletedNotification = NotificationItem.getDummyNotifications()
+                        .firstWhere((item) => item.id == notification.id);
+                    _notifications.add(deletedNotification);
+                    _notifications.sort((a, b) => b.time.compareTo(a.time));
+                    
+                    // Update filtered list based on current tab
+                    if (_tabController.index == 0) {
+                      _filteredNotifications = _notifications;
+                    } else {
+                      _filteredNotifications = _notifications.where((notif) => !notif.isRead).toList();
+                    }
+                  });
+                },
+              ),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(8),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildNotificationIcon(notification.type),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              notification.title,
-                              style: TextStyle(
-                                fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
-                                fontSize: 16,
-                                color: notification.isRead 
-                                    ? AppTheme.textPrimaryColor 
-                                    : AppTheme.primaryColor,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _formatTime(notification.time),
-                            style: TextStyle(
-                              color: AppTheme.textSecondaryColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        notification.message,
-                        style: TextStyle(
-                          color: notification.isRead
-                              ? AppTheme.textSecondaryColor
-                              : AppTheme.textPrimaryColor,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildActionButtons(notification),
-                    ],
-                  ),
+          );
+        },
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          elevation: notification.isRead ? 0 : 2,
+          shadowColor: isDarkMode ? Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.3) : AppTheme.primaryColor.withValues(red: null, green: null, blue: null, alpha: 0.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: isDarkMode ? notification.isRead ? Colors.grey.shade800 : _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: 0.5) : notification.isRead ? Colors.grey.shade200 : _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: 0.3),
+              width: notification.isRead ? 1 : 1.5,
+            ),
+          ),
+          child: InkWell(
+            onTap: () => _handleNotificationTap(notification),
+            borderRadius: BorderRadius.circular(16),
+            splashColor: _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: 0.1),
+            highlightColor: _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: 0.05),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              decoration: BoxDecoration(
+                color: notification.isRead ? isDarkMode ? AppTheme.darkCardColor : theme.cardColor : isDarkMode ? _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: 0.15) : _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                gradient: notification.isRead ? null : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: isDarkMode ? 0.2 : 0.1),
+                    _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: isDarkMode ? 0.05 : 0.03),
+                  ],
                 ),
-              ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildNotificationIcon(notification.type),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                notification.title,
+                                style: TextStyle(
+                                  fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
+                                  fontSize: 16,
+                                  color: notification.isRead ? isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor : _getNotificationTypeColor(notification.type).withValues(red: null, green: null, blue: null, alpha: 1),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isDarkMode ? Colors.grey.shade800.withValues(red: null, green: null, blue: null, alpha: 0.5) : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _formatTime(notification.time),
+                                style: TextStyle(
+                                  color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          notification.message,
+                          style: TextStyle(
+                            color: notification.isRead ? isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor : isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButtons(notification),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+  
+  Color _getNotificationTypeColor(NotificationType type) {
+    switch (type) {
+      case NotificationType.appointment:
+        return Colors.blue;
+      case NotificationType.message:
+        return Colors.green;
+      case NotificationType.reminder:
+        return Colors.orange;
+      case NotificationType.promotion:
+        return Colors.purple;
+      case NotificationType.general:
+        return AppTheme.primaryColor;
+    }
+  }
+
+  Widget _buildNotificationIcon(NotificationType type) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
+    IconData icon;
+    Color color = _getNotificationTypeColor(type);
+    
+    switch (type) {
+      case NotificationType.appointment:
+        icon = Icons.calendar_today;
+        break;
+      case NotificationType.message:
+        icon = Icons.chat_bubble_outline;
+        break;
+      case NotificationType.reminder:
+        icon = Icons.access_time;
+        break;
+      case NotificationType.promotion:
+        icon = Icons.local_offer_outlined;
+        break;
+      case NotificationType.general:
+        icon = Icons.notifications_none;
+        break;
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(red: null, green: null, blue: null, alpha: isDarkMode ? 0.2 : 0.1),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: color.withValues(red: null, green: null, blue: null, alpha: 0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(red: null, green: null, blue: null, alpha: isDarkMode ? 0.2 : 0.1),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Icon(
+        icon,
+        color: color.withValues(red: null, green: null, blue: null, alpha: 1),
+        size: 20,
       ),
     );
   }
   
   Widget _buildActionButtons(NotificationItem notification) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    Color primaryButtonColor = _getNotificationTypeColor(notification.type);
+    
     switch (notification.type) {
       case NotificationType.appointment:
         return Row(
           children: [
-            _buildActionButton('View details', AppTheme.primaryColor),
+            _buildActionButton('View details', primaryButtonColor, isDarkMode),
             const SizedBox(width: 12),
-            _buildActionButton('Reschedule', AppTheme.textSecondaryColor),
+            _buildActionButton(
+              'Reschedule', 
+              isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor, 
+              isDarkMode
+            ),
           ],
         );
       case NotificationType.message:
-        return _buildActionButton('Reply', AppTheme.primaryColor);
+        return _buildActionButton('Reply', primaryButtonColor, isDarkMode);
       case NotificationType.reminder:
-        return _buildActionButton('Mark as done', AppTheme.primaryColor);
+        return _buildActionButton('Mark as done', primaryButtonColor, isDarkMode);
       case NotificationType.promotion:
-        return _buildActionButton('View offer', AppTheme.primaryColor);
+        return _buildActionButton('View offer', primaryButtonColor, isDarkMode);
       default:
         return const SizedBox.shrink();
     }
   }
   
-  Widget _buildActionButton(String label, Color color) {
+  Widget _buildActionButton(String label, Color color, bool isDarkMode) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: color.withValues(red: null, green: null, blue: null, alpha: 0.5)),
+        borderRadius: BorderRadius.circular(16),
+        color: color.withValues(red: null, green: null, blue: null, alpha: 0.1),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Text(
         label,
         style: TextStyle(
           color: color,
           fontSize: 12,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
-
-  Widget _buildNotificationIcon(NotificationType type) {
-    IconData iconData;
-    Color color;
-    double rotationAngle = 0;
-
-    switch (type) {
-      case NotificationType.appointment:
-        iconData = Icons.calendar_today;
-        color = const Color(0xFF4285F4); // Google Blue
-        break;
-      case NotificationType.message:
-        iconData = Icons.chat_bubble;
-        color = const Color(0xFF34A853); // Google Green
-        break;
-      case NotificationType.reminder:
-        iconData = Icons.alarm;
-        color = const Color(0xFFFBBC05); // Google Yellow
-        rotationAngle = math.pi / 12; // Slightly tilted
-        break;
-      case NotificationType.promotion:
-        iconData = Icons.local_offer;
-        color = const Color(0xFFEA4335); // Google Red
-        rotationAngle = -math.pi / 12; // Slightly tilted other way
-        break;
-      case NotificationType.general:
-        iconData = Icons.info;
-        color = const Color(0xFF9E9E9E); // Grey
-        break;
-    }
-
-    return Transform.rotate(
-      angle: rotationAngle,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          iconData,
-          color: color,
-          size: 24,
-        ),
-      ),
-    );
-  }
-
+  
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-
-    if (difference.inSeconds < 60) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
+    
+    if (difference.inMinutes < 60) {
       return '${difference.inMinutes}m ago';
     } else if (difference.inHours < 24) {
       return '${difference.inHours}h ago';
@@ -528,149 +669,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
       return '${time.day}/${time.month}/${time.year}';
     }
   }
-
+  
   void _handleNotificationTap(NotificationItem notification) {
     // Mark as read
-    if (!notification.isRead) {
-      setState(() {
-        final index = _notifications.indexWhere((item) => item.id == notification.id);
-        if (index != -1) {
-          _notifications[index] = NotificationItem(
-            id: notification.id,
-            title: notification.title,
-            message: notification.message,
-            time: notification.time,
-            isRead: true,
-            type: notification.type,
-          );
-          
-          // Update filtered list if needed
-          if (_tabController.index == 1) {
-            _filteredNotifications = _notifications.where((notif) => !notif.isRead).toList();
-          } else {
-            _filteredNotifications = _notifications;
-          }
-        }
-      });
-    }
-
-    // Show full notification content
-    _showNotificationDetails(notification);
-  }
-
-  void _showNotificationDetails(NotificationItem notification) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          notification.title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              notification.message,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildNotificationIcon(notification.type),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _getNotificationTypeText(notification.type),
-                    style: const TextStyle(
-                      color: AppTheme.textSecondaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          _getActionButton(notification.type),
-        ],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-    );
-  }
-  
-  String _getNotificationTypeText(NotificationType type) {
-    switch (type) {
-      case NotificationType.appointment:
-        return 'Appointment notification';
-      case NotificationType.message:
-        return 'Message notification';
-      case NotificationType.reminder:
-        return 'Medication reminder';
-      case NotificationType.promotion:
-        return 'Special offer';
-      case NotificationType.general:
-        return 'General information';
-    }
-  }
-  
-  Widget _getActionButton(NotificationType type) {
-    String text;
-    VoidCallback? onPressed;
-    
-    switch (type) {
-      case NotificationType.appointment:
-        text = 'View Appointment';
-        onPressed = () {
-          Navigator.pop(context);
-          // Navigate to appointment details
-        };
-        break;
-      case NotificationType.message:
-        text = 'Reply';
-        onPressed = () {
-          Navigator.pop(context);
-          // Navigate to chat screen
-        };
-        break;
-      case NotificationType.reminder:
-        text = 'Mark as Taken';
-        onPressed = () {
-          Navigator.pop(context);
-          // Mark medication as taken
-        };
-        break;
-      case NotificationType.promotion:
-        text = 'View Offer';
-        onPressed = () {
-          Navigator.pop(context);
-          // Navigate to promotions screen
-        };
-        break;
-      case NotificationType.general:
-        return const SizedBox.shrink(); // No action button for general notifications
-    }
-    
-    return FilledButton(
-      onPressed: onPressed,
-      child: Text(text),
-    );
-  }
-
-  void _markAllAsRead() {
     setState(() {
-      _notifications = _notifications.map((notification) {
-        return NotificationItem(
+      final index = _notifications.indexWhere((item) => item.id == notification.id);
+      if (index != -1 && !_notifications[index].isRead) {
+        _notifications[index] = NotificationItem(
           id: notification.id,
           title: notification.title,
           message: notification.message,
@@ -678,31 +683,76 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
           isRead: true,
           type: notification.type,
         );
-      }).toList();
+        
+        // Update filtered notifications based on current tab
+        if (_tabController.index == 0) {
+          _filteredNotifications = _notifications;
+        } else {
+          _filteredNotifications = _notifications.where((notif) => !notif.isRead).toList();
+        }
+      }
+    });
+    
+    // Handle notification navigation based on type
+    switch (notification.type) {
+      case NotificationType.appointment:
+        // Navigate to appointment details
+        break;
+      case NotificationType.message:
+        // Navigate to chat
+        break;
+      case NotificationType.reminder:
+        // Navigate to medication details
+        break;
+      case NotificationType.promotion:
+        // Navigate to promotion details
+        break;
+      case NotificationType.general:
+        // Just show a notification detail dialog
+        break;
+    }
+  }
+  
+  void _markAllAsRead() {
+    setState(() {
+      for (int i = 0; i < _notifications.length; i++) {
+        if (!_notifications[i].isRead) {
+          _notifications[i] = NotificationItem(
+            id: _notifications[i].id,
+            title: _notifications[i].title,
+            message: _notifications[i].message,
+            time: _notifications[i].time,
+            isRead: true,
+            type: _notifications[i].type,
+          );
+        }
+      }
       
-      // Update filtered notifications
+      // Update filtered notifications based on current tab
       if (_tabController.index == 0) {
         _filteredNotifications = _notifications;
       } else {
-        _filteredNotifications = [];
+        _filteredNotifications = _notifications.where((notif) => !notif.isRead).toList();
       }
     });
-
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 12),
-            Text('All notifications marked as read'),
-          ],
+        content: Text(
+          'All notifications marked as read',
+          style: TextStyle(color: Colors.white),
         ),
-        duration: const Duration(seconds: 2),
+        backgroundColor: AppTheme.primaryColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
         margin: const EdgeInsets.all(8),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
       ),
     );
   }

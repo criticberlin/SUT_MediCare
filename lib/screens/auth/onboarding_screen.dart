@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../routes.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../widgets/custom_button.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -46,8 +48,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : AppTheme.backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -91,7 +96,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       onPressed: () {
                         Navigator.pushReplacementNamed(context, AppRoutes.login);
                       },
-                      child: const Text('Skip'),
+                      child: Text(
+                        'Skip',
+                        style: TextStyle(
+                          color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ],
                 ],
@@ -104,44 +115,71 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildPage(OnboardingItem item) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.network(
-            item.image,
+          Container(
             height: 280,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                height: 280,
-                color: AppTheme.accentColor.withOpacity(0.1),
-                child: const Center(
-                  child: Icon(
-                    Icons.image_not_supported,
-                    size: 60,
-                    color: AppTheme.primaryColor,
-                  ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: isDarkMode 
+                  ? Border.all(color: Colors.grey.shade800, width: 1)
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: isDarkMode 
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : Colors.grey.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  spreadRadius: 2,
                 ),
-              );
-            },
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.network(
+                item.image,
+                height: 280,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 280,
+                    color: isDarkMode 
+                      ? AppTheme.primaryColor.withValues(alpha: 0.2) 
+                      : AppTheme.accentColor.withValues(alpha: 0.1),
+                    child: Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: 60,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
           const SizedBox(height: 40),
           Text(
             item.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimaryColor,
+              color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           Text(
             item.description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
-              color: AppTheme.textSecondaryColor,
+              color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
             ),
             textAlign: TextAlign.center,
           ),
@@ -151,6 +189,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   List<Widget> _buildPageIndicator() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     List<Widget> indicators = [];
     for (int i = 0; i < _onboardingItems.length; i++) {
       indicators.add(
@@ -162,7 +203,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             shape: BoxShape.circle,
             color: i == _currentPage
                 ? AppTheme.primaryColor
-                : AppTheme.textSecondaryColor.withOpacity(0.3),
+                : (isDarkMode 
+                    ? AppTheme.darkTextSecondaryColor.withValues(alpha: 0.3)
+                    : AppTheme.textSecondaryColor.withValues(alpha: 0.3)),
           ),
         ),
       );

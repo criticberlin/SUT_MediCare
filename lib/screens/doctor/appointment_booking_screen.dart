@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/doctor.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../routes.dart';
@@ -81,10 +83,14 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
   }
 
   void _showBookingConfirmationDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -94,7 +100,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.successColor.withOpacity(0.1),
+                color: AppTheme.successColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -114,7 +120,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
               '${_formatDate(_selectedDate)} at $_selectedTime.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
+                    color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                   ),
             ),
             const SizedBox(height: 24),
@@ -148,19 +154,30 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios,
-            color: AppTheme.textPrimaryColor,
+            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Book Appointment'),
+        title: Text(
+          'Book Appointment',
+          style: TextStyle(
+            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -176,25 +193,25 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildDoctorInfo(),
+                        _buildDoctorInfo(isDarkMode, theme),
                         const SizedBox(height: 24),
-                        _buildSectionTitle('Select Date'),
+                        _buildSectionTitle('Select Date', theme),
                         const SizedBox(height: 16),
-                        _buildDatePicker(),
+                        _buildDatePicker(isDarkMode),
                         const SizedBox(height: 24),
-                        _buildSectionTitle('Select Time'),
+                        _buildSectionTitle('Select Time', theme),
                         const SizedBox(height: 16),
-                        _buildTimeSelector(),
+                        _buildTimeSelector(isDarkMode),
                         const SizedBox(height: 24),
-                        _buildSectionTitle('Duration'),
+                        _buildSectionTitle('Duration', theme),
                         const SizedBox(height: 16),
-                        _buildDurationSelector(),
+                        _buildDurationSelector(isDarkMode),
                         const SizedBox(height: 24),
-                        _buildSectionTitle('Appointment Type'),
+                        _buildSectionTitle('Appointment Type', theme),
                         const SizedBox(height: 16),
-                        _buildAppointmentTypeSelector(),
+                        _buildAppointmentTypeSelector(isDarkMode),
                         const SizedBox(height: 24),
-                        _buildSectionTitle('Notes for Doctor (Optional)'),
+                        _buildSectionTitle('Notes for Doctor (Optional)', theme),
                         const SizedBox(height: 16),
                         CustomTextField(
                           hint: 'Add any notes or symptoms to discuss',
@@ -206,7 +223,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                     ),
                   ),
                 ),
-                _buildPriceAndBookButton(),
+                _buildPriceAndBookButton(isDarkMode),
               ],
             ),
           ),
@@ -215,11 +232,11 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     );
   }
 
-  Widget _buildDoctorInfo() {
+  Widget _buildDoctorInfo(bool isDarkMode, ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.05),
+        color: isDarkMode ? AppTheme.darkCardColor.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -235,7 +252,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                 return Container(
                   width: 70,
                   height: 70,
-                  color: AppTheme.accentColor.withOpacity(0.2),
+                  color: AppTheme.accentColor.withValues(alpha: 0.2),
                   child: const Icon(
                     Icons.person,
                     size: 35,
@@ -252,14 +269,14 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
               children: [
                 Text(
                   widget.doctor.name,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   widget.doctor.specialty,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -272,23 +289,24 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                     const SizedBox(width: 4),
                     Text(
                       '${widget.doctor.rating}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
+                        color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Icon(
+                    Icon(
                       Icons.work_outline,
-                      color: AppTheme.textSecondaryColor,
+                      color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${widget.doctor.experience} years',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: AppTheme.textSecondaryColor,
+                        color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                       ),
                     ),
                   ],
@@ -301,14 +319,14 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, ThemeData theme) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium,
+      style: theme.textTheme.titleMedium,
     );
   }
 
-  Widget _buildDatePicker() {
+  Widget _buildDatePicker(bool isDarkMode) {
     return SizedBox(
       height: 100,
       child: ListView.builder(
@@ -330,12 +348,16 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppTheme.primaryColor
-                    : Colors.grey.withOpacity(0.1),
+                    : isDarkMode 
+                        ? AppTheme.darkCardColor 
+                        : Colors.grey.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: isSelected
                     ? null
                     : Border.all(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: isDarkMode 
+                            ? Colors.grey.withValues(alpha: 0.3) 
+                            : Colors.grey.withValues(alpha: 0.2),
                         width: 1,
                       ),
               ),
@@ -347,7 +369,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white
-                          : AppTheme.textSecondaryColor,
+                          : isDarkMode 
+                              ? AppTheme.darkTextSecondaryColor 
+                              : AppTheme.textSecondaryColor,
                       fontSize: 12,
                     ),
                   ),
@@ -357,7 +381,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white
-                          : AppTheme.textPrimaryColor,
+                          : isDarkMode 
+                              ? AppTheme.darkTextPrimaryColor 
+                              : AppTheme.textPrimaryColor,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -368,7 +394,9 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white
-                          : AppTheme.textSecondaryColor,
+                          : isDarkMode 
+                              ? AppTheme.darkTextSecondaryColor 
+                              : AppTheme.textSecondaryColor,
                       fontSize: 12,
                     ),
                   ),
@@ -381,7 +409,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     );
   }
 
-  Widget _buildTimeSelector() {
+  Widget _buildTimeSelector(bool isDarkMode) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -398,19 +426,27 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
             decoration: BoxDecoration(
               color: isSelected
                   ? AppTheme.primaryColor
-                  : Colors.grey.withOpacity(0.1),
+                  : isDarkMode 
+                      ? AppTheme.darkCardColor 
+                      : Colors.grey.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: isSelected
                   ? null
                   : Border.all(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: isDarkMode 
+                          ? Colors.grey.withValues(alpha: 0.3) 
+                          : Colors.grey.withValues(alpha: 0.2),
                       width: 1,
                     ),
             ),
             child: Text(
               time,
               style: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+                color: isSelected 
+                    ? Colors.white 
+                    : isDarkMode 
+                        ? AppTheme.darkTextPrimaryColor 
+                        : AppTheme.textPrimaryColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -421,7 +457,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     );
   }
 
-  Widget _buildDurationSelector() {
+  Widget _buildDurationSelector(bool isDarkMode) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -438,19 +474,27 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
             decoration: BoxDecoration(
               color: isSelected
                   ? AppTheme.primaryColor
-                  : Colors.grey.withOpacity(0.1),
+                  : isDarkMode 
+                      ? AppTheme.darkCardColor 
+                      : Colors.grey.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: isSelected
                   ? null
                   : Border.all(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: isDarkMode 
+                          ? Colors.grey.withValues(alpha: 0.3) 
+                          : Colors.grey.withValues(alpha: 0.2),
                       width: 1,
                     ),
             ),
             child: Text(
               duration,
               style: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+                color: isSelected 
+                    ? Colors.white 
+                    : isDarkMode 
+                        ? AppTheme.darkTextPrimaryColor 
+                        : AppTheme.textPrimaryColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -461,7 +505,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     );
   }
 
-  Widget _buildAppointmentTypeSelector() {
+  Widget _buildAppointmentTypeSelector(bool isDarkMode) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -494,12 +538,16 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
             decoration: BoxDecoration(
               color: isSelected
                   ? AppTheme.primaryColor
-                  : Colors.grey.withOpacity(0.1),
+                  : isDarkMode 
+                      ? AppTheme.darkCardColor 
+                      : Colors.grey.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: isSelected
                   ? null
                   : Border.all(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: isDarkMode 
+                          ? Colors.grey.withValues(alpha: 0.3) 
+                          : Colors.grey.withValues(alpha: 0.2),
                       width: 1,
                     ),
             ),
@@ -509,13 +557,21 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
                 Icon(
                   icon,
                   size: 16,
-                  color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+                  color: isSelected 
+                      ? Colors.white 
+                      : isDarkMode 
+                          ? AppTheme.darkTextPrimaryColor 
+                          : AppTheme.textPrimaryColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   type,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+                    color: isSelected 
+                        ? Colors.white 
+                        : isDarkMode 
+                            ? AppTheme.darkTextPrimaryColor 
+                            : AppTheme.textPrimaryColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -528,7 +584,7 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
     );
   }
 
-  Widget _buildPriceAndBookButton() {
+  Widget _buildPriceAndBookButton(bool isDarkMode) {
     // Get fee based on selected appointment type
     final double fee = _feeMap[_selectedType] ?? 1800.0;
     
@@ -558,10 +614,10 @@ class _AppointmentBookingScreenState extends State<AppointmentBookingScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Total Fee',
                 style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
+                  color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                   fontSize: 14,
                 ),
               ),

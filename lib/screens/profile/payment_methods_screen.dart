@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 
@@ -110,6 +112,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Payment Methods'),
@@ -126,6 +129,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -138,15 +144,17 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           const SizedBox(height: 24),
           Text(
             'No Payment Methods',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            style: TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
+              color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Add a payment method to make payments easier',
             style: TextStyle(
-              color: AppTheme.textSecondaryColor,
+              color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
@@ -164,20 +172,25 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   Widget _buildPaymentMethodsList() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Text(
           'Your saved payment methods',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+          ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Securely manage your payment methods',
           style: TextStyle(
-            color: AppTheme.textSecondaryColor,
+            color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
           ),
         ),
         const SizedBox(height: 24),
@@ -187,6 +200,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   Widget _buildPaymentMethodCard(PaymentMethod method) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     String cardTypeImage;
     
     // Determine card type icon (simplified for the example)
@@ -201,11 +217,13 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: isDarkMode 
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -277,18 +295,19 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Card Holder Name',
                       style: TextStyle(
-                        color: AppTheme.textSecondaryColor,
+                        color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       method.cardHolderName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w500,
+                        color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                       ),
                     ),
                   ],
@@ -296,18 +315,19 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
+                    Text(
                       'Expiry Date',
                       style: TextStyle(
-                        color: AppTheme.textSecondaryColor,
+                        color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       method.expiryDate,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w500,
+                        color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                       ),
                     ),
                   ],
@@ -318,7 +338,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: isDarkMode ? AppTheme.darkCardColor.withValues(alpha: 0.7) : Colors.grey.shade50,
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(16),
                 bottomRight: Radius.circular(16),
@@ -354,7 +374,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     ),
                     label: const Text('Set as default'),
                     style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.textSecondaryColor,
+                      foregroundColor: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                     ),
                   ),
                 IconButton(
@@ -427,6 +447,7 @@ class _AddPaymentMethodSheetState extends State<AddPaymentMethodSheet> {
       // In a real app, this would save to a database or API
       // For now, we'll just simulate a delay
       Future.delayed(const Duration(seconds: 1), () {
+        if (!mounted) return;
         Navigator.pop(context, newPaymentMethod);
       });
     }

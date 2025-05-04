@@ -29,6 +29,8 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = AppTheme.primaryColor;
+    
     return SizedBox(
       width: width ?? double.infinity,
       height: height ?? 56,
@@ -37,24 +39,24 @@ class CustomButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: isOutlined 
               ? Colors.transparent
-              : backgroundColor ?? AppTheme.primaryColor,
+              : backgroundColor ?? primaryColor,
           foregroundColor: isOutlined 
-              ? AppTheme.primaryColor
+              ? primaryColor
               : textColor ?? Colors.white,
           elevation: isOutlined ? 0 : 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: isOutlined
-                ? BorderSide(color: AppTheme.primaryColor, width: 1)
+                ? BorderSide(color: primaryColor, width: 1)
                 : BorderSide.none,
           ),
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
-                  color: Colors.white,
+                  color: isOutlined ? primaryColor : Colors.white,
                   strokeWidth: 2,
                 ),
               )
@@ -71,7 +73,7 @@ class CustomButton extends StatelessWidget {
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: isOutlined
-                          ? AppTheme.primaryColor
+                          ? primaryColor
                           : textColor ?? Colors.white,
                     ),
                   ),

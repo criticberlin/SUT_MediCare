@@ -12,6 +12,7 @@ class AppRoutes {
   static const String appointmentBooking = '/appointment-booking';
   static const String appointmentHistory = '/appointment-history';
   static const String chat = '/chat';
+  static const String chatList = '/chat-list';
   static const String videoCall = '/video-call';
   static const String prescriptionUpload = '/prescription-upload';
   static const String profile = '/profile';

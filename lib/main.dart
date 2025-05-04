@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'utils/theme/app_theme.dart';
+import 'utils/theme/theme_provider.dart';
 import 'routes.dart';
 
 // Screens
@@ -11,6 +13,7 @@ import 'screens/home/home_screen.dart';
 import 'screens/doctor/doctor_detail_screen.dart';
 import 'screens/doctor/appointment_booking_screen.dart';
 import 'screens/chat/chat_screen.dart';
+import 'screens/chat/chat_list_screen.dart';
 import 'screens/video/video_call_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
@@ -25,7 +28,12 @@ import 'models/doctor.dart';
 import 'models/user.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -33,10 +41,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       title: 'MediCare',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+      theme: themeProvider.isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
       initialRoute: AppRoutes.splash,
       onGenerateRoute: (settings) {
         switch (settings.name) {
@@ -85,6 +94,10 @@ class MyApp extends StatelessWidget {
               builder: (_) => ChatScreen(
                 doctorId: settings.arguments as String,
               ),
+            );
+          case AppRoutes.chatList:
+            return MaterialPageRoute(
+              builder: (_) => const ChatListScreen(),
             );
           case AppRoutes.videoCall:
             return MaterialPageRoute(

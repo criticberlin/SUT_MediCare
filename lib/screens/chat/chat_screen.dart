@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/message.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../routes.dart';
 import '../../models/doctor.dart';
 
@@ -19,6 +21,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   late List<Message> _messages;
+  // ignore: unused_field
   late ChatPreview _chatData;
   bool _isAttachmentOpen = false;
   final ScrollController _scrollController = ScrollController();
@@ -112,16 +115,18 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     // Get doctor object to ensure we're using the most up-to-date data
     final doctor = _getDoctor();
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
     
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back,
-            color: AppTheme.textPrimaryColor,
+            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -143,18 +148,18 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   Text(
                     'Dr. ${doctor.name}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimaryColor,
+                      color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     doctor.specialty,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textSecondaryColor,
+                      color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                     ),
                   ),
                 ],
@@ -167,7 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(red: null, green: null, blue: null, alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -188,7 +193,7 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(red: null, green: null, blue: null, alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -205,32 +210,34 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: isDarkMode ? AppTheme.darkBackgroundColor : Colors.grey.shade50,
           image: DecorationImage(
             image: const NetworkImage(
               'https://img.freepik.com/free-vector/abstract-medical-wallpaper-template-design_53876-61802.jpg',
             ),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
-              Colors.white.withOpacity(0.95),
-              BlendMode.lighten,
+              isDarkMode 
+                ? Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.85) 
+                : Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.95),
+              isDarkMode ? BlendMode.darken : BlendMode.lighten,
             ),
           ),
         ),
         child: Column(
           children: [
             Expanded(
-              child: _buildChatMessages(),
+              child: _buildChatMessages(isDarkMode),
             ),
-            if (_isAttachmentOpen) _buildAttachmentOptions(),
-            _buildMessageInput(),
+            if (_isAttachmentOpen) _buildAttachmentOptions(isDarkMode),
+            _buildMessageInput(isDarkMode),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChatMessages() {
+  Widget _buildChatMessages(bool isDarkMode) {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -239,7 +246,7 @@ class _ChatScreenState extends State<ChatScreen> {
       itemBuilder: (context, index) {
         final message = _messages.reversed.toList()[index];
         final showAvatar = _shouldShowAvatar(index, _messages.reversed.toList());
-        return _buildMessageItem(message, showAvatar);
+        return _buildMessageItem(message, showAvatar, isDarkMode);
       },
     );
   }
@@ -252,12 +259,12 @@ class _ChatScreenState extends State<ChatScreen> {
     return !messages[index].isSent && messages[index + 1].isSent;
   }
 
-  Widget _buildMessageItem(Message message, bool showAvatar) {
+  Widget _buildMessageItem(Message message, bool showAvatar, bool isDarkMode) {
     final isSent = message.isSent;
     final doctor = _getDoctor();
 
     if (message.type == MessageType.image) {
-      return _buildImageMessage(message, isSent, showAvatar, doctor);
+      return _buildImageMessage(message, isSent, showAvatar, doctor, isDarkMode);
     }
 
     return Padding(
@@ -286,7 +293,7 @@ class _ChatScreenState extends State<ChatScreen> {
               decoration: BoxDecoration(
                 color: isSent
                     ? AppTheme.primaryColor
-                    : Colors.white,
+                    : isDarkMode ? AppTheme.darkCardColor : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -299,7 +306,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: isDarkMode 
+                        ? Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.2) 
+                        : Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 1),
                   ),
@@ -315,7 +324,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: Text(
                         _formatTime(message.timestamp),
                         style: TextStyle(
-                          color: AppTheme.textSecondaryColor.withOpacity(0.7),
+                          color: isDarkMode 
+                              ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
+                              : AppTheme.textSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7),
                           fontSize: 10,
                         ),
                       ),
@@ -324,7 +335,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     message.content,
                     style: TextStyle(
-                      color: isSent ? Colors.white : AppTheme.textPrimaryColor,
+                      color: isSent 
+                          ? Colors.white 
+                          : isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                       fontSize: 15,
                     ),
                   ),
@@ -338,7 +351,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           Text(
                             _formatTime(message.timestamp),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                               fontSize: 10,
                             ),
                           ),
@@ -346,7 +359,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           Icon(
                             message.isRead ? Icons.done_all : Icons.done,
                             size: 12,
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                           ),
                         ],
                       ),
@@ -361,7 +374,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildImageMessage(Message message, bool isSent, bool showAvatar, Doctor doctor) {
+  Widget _buildImageMessage(Message message, bool isSent, bool showAvatar, Doctor doctor, bool isDarkMode) {
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
@@ -391,7 +404,7 @@ class _ChatScreenState extends State<ChatScreen> {
               decoration: BoxDecoration(
                 color: isSent
                     ? AppTheme.primaryColor
-                    : Colors.white,
+                    : isDarkMode ? AppTheme.darkCardColor : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -404,7 +417,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: isDarkMode 
+                        ? Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.2) 
+                        : Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 1),
                   ),
@@ -424,10 +439,14 @@ class _ChatScreenState extends State<ChatScreen> {
                         return Container(
                           height: 120,
                           width: double.infinity,
-                          color: Colors.grey.withOpacity(0.3),
-                          child: const Icon(
+                          color: isDarkMode 
+                              ? Colors.grey.shade800 
+                              : Colors.grey.withValues(red: null, green: null, blue: null, alpha: 0.3),
+                          child: Icon(
                             Icons.image_not_supported_outlined,
-                            color: AppTheme.textSecondaryColor,
+                            color: isDarkMode 
+                                ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
+                                : AppTheme.textSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7),
                           ),
                         );
                       },
@@ -442,8 +461,10 @@ class _ChatScreenState extends State<ChatScreen> {
                           _formatTime(message.timestamp),
                           style: TextStyle(
                             color: isSent 
-                                ? Colors.white.withOpacity(0.7) 
-                                : AppTheme.textSecondaryColor,
+                                ? Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7) 
+                                : isDarkMode 
+                                    ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
+                                    : AppTheme.textSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7),
                             fontSize: 10,
                           ),
                         ),
@@ -452,7 +473,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           Icon(
                             message.isRead ? Icons.done_all : Icons.done,
                             size: 12,
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                           ),
                         ],
                       ],
@@ -467,7 +488,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildAttachmentOptions() {
+  Widget _buildAttachmentOptions(bool isDarkMode) {
     final options = [
       {'icon': Icons.image, 'label': 'Gallery', 'color': Colors.purple},
       {'icon': Icons.camera_alt, 'label': 'Camera', 'color': Colors.blue},
@@ -478,10 +499,12 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: isDarkMode 
+                ? Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.2) 
+                : Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.05),
             blurRadius: 5,
             offset: const Offset(0, -1),
           ),
@@ -508,10 +531,12 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(height: 8),
               Text(
                 option['label'] as String,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: AppTheme.textSecondaryColor,
+                  color: isDarkMode 
+                      ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
+                      : AppTheme.textSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7),
                 ),
               ),
             ],
@@ -521,14 +546,16 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageInput() {
+  Widget _buildMessageInput(bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: isDarkMode 
+                ? Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.2) 
+                : Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 0.05),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, -1),
@@ -555,40 +582,53 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(
+                    color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200
+                  ),
                 ),
                 child: Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _messageController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Type a message...',
                           hintStyle: TextStyle(
-                            color: AppTheme.textSecondaryColor,
+                            color: isDarkMode 
+                                ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
+                                : AppTheme.textSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7),
                           ),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        style: TextStyle(
+                          color: isDarkMode 
+                              ? AppTheme.darkTextPrimaryColor 
+                              : AppTheme.textPrimaryColor,
                         ),
                         textCapitalization: TextCapitalization.sentences,
                         maxLines: null,
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.emoji_emotions_outlined,
-                        color: AppTheme.textSecondaryColor,
+                        color: isDarkMode 
+                            ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
+                            : AppTheme.textSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7),
                       ),
                       onPressed: () {
                         // Show emoji picker
                       },
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.mic_none,
-                        color: AppTheme.textSecondaryColor,
+                        color: isDarkMode 
+                            ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
+                            : AppTheme.textSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7),
                       ),
                       onPressed: () {
                         // Voice recording

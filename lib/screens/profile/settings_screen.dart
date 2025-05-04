@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../routes.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -14,7 +16,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _emailNotificationsEnabled = true;
   bool _smsNotificationsEnabled = false;
   bool _locationEnabled = true;
-  bool _darkModeEnabled = false;
   String _selectedLanguage = 'English';
   
   final List<String> _availableLanguages = [
@@ -27,6 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -105,12 +108,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSwitchTile(
             title: 'Dark Mode',
             subtitle: 'Enable dark color theme',
-            value: _darkModeEnabled,
+            value: themeProvider.isDarkMode,
             onChanged: (value) {
-              setState(() {
-                _darkModeEnabled = value;
-              });
-              // Apply theme change
+              themeProvider.toggleTheme();
             },
             icon: Icons.dark_mode_outlined,
           ),
@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: (iconColor ?? AppTheme.primaryColor).withOpacity(0.1),
+          color: (iconColor ?? AppTheme.primaryColor).withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -243,7 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: (iconColor ?? AppTheme.primaryColor).withOpacity(0.1),
+          color: (iconColor ?? AppTheme.primaryColor).withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -262,7 +262,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: Text(
         subtitle,
         style: TextStyle(
-          color: title == 'Delete Account' ? AppTheme.errorColor.withOpacity(0.7) : null,
+          color: title == 'Delete Account' ? AppTheme.errorColor.withValues(alpha: 0.7) : null,
         ),
       ),
       trailing: const Icon(
@@ -286,7 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.1),
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(

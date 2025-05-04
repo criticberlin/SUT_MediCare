@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/doctor.dart';
 import '../../models/appointment.dart';
 import '../../models/user.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../routes.dart';
 import '../../widgets/doctor_card.dart';
 import '../../widgets/appointment_card.dart';
@@ -23,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       body: _buildBody(),
       bottomNavigationBar: BottomNavigationBar(
@@ -33,9 +37,9 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: AppTheme.textSecondaryColor,
+        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor,
+        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor,
+        unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor,
         selectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 12,
@@ -113,6 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -123,23 +130,23 @@ class _HomeScreenState extends State<HomeScreen> {
               'Current Location',
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.textSecondaryColor,
+                color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 4),
             Row(
-              children: const [
+              children: [
                 Icon(
                   Icons.location_on,
                   size: 16,
-                  color: AppTheme.textPrimaryColor,
+                  color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                 ),
-                SizedBox(width: 4),
+                const SizedBox(width: 4),
                 Text(
                   'Cairo, Egypt',
                   style: TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                    color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -155,11 +162,13 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: isDarkMode 
+                      ? Colors.black.withValues(alpha: 0.2) 
+                      : Colors.grey.withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 2,
                   offset: const Offset(0, 1),
@@ -169,9 +178,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Stack(
               alignment: Alignment.topRight,
               children: [
-                const Icon(
+                Icon(
                   Icons.notifications_outlined,
-                  color: AppTheme.textPrimaryColor,
+                  color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                   size: 24,
                 ),
                 Container(
@@ -191,24 +200,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchBar() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F8F9),
+        color: isDarkMode ? AppTheme.darkCardColor : const Color(0xFFF7F8F9),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.search,
-            color: AppTheme.textSecondaryColor,
+            color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
             size: 24,
           ),
           const SizedBox(width: 12),
           Text(
             'Search',
             style: TextStyle(
-              color: AppTheme.textSecondaryColor.withOpacity(0.7),
+              color: (isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor).withValues(alpha: 0.7),
               fontSize: 16,
             ),
           ),
@@ -216,12 +228,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDarkMode ? Colors.grey.shade800 : Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.tune,
-              color: AppTheme.textSecondaryColor,
+              color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
               size: 20,
             ),
           ),
@@ -234,6 +246,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final upcomingAppointments = _appointments
         .where((appointment) => appointment.status == AppointmentStatus.upcoming)
         .toList();
+    
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
 
     if (upcomingAppointments.isEmpty) {
       return Column(
@@ -247,7 +262,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppTheme.accentColor.withOpacity(0.1),
+              color: isDarkMode 
+                  ? AppTheme.darkCardColor 
+                  : AppTheme.accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
@@ -267,9 +284,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Book your appointment now',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondaryColor,
-                        ),
+                    style: TextStyle(
+                      color: isDarkMode 
+                          ? AppTheme.darkTextSecondaryColor 
+                          : AppTheme.textSecondaryColor,
+                    ),
                   ),
                 ],
               ),
@@ -330,6 +349,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategorySection() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     final categories = [
       {
         'icon': Icons.healing_rounded,
@@ -385,11 +407,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 70,
                     height: 70,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.shadowColor,
+                          color: isDarkMode 
+                              ? Colors.black.withValues(alpha: 0.2) 
+                              : AppTheme.shadowColor,
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                           spreadRadius: 0,
@@ -405,10 +429,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 10),
                   Text(
                     category['name'] as String,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppTheme.textPrimaryColor,
+                      color: isDarkMode 
+                          ? AppTheme.darkTextPrimaryColor 
+                          : AppTheme.textPrimaryColor,
                     ),
                   ),
                 ],
@@ -530,6 +556,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAppointmentsTab() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return SafeArea(
       child: SingleChildScrollView(
         child: Padding(
@@ -546,15 +575,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
+                        color: isDark 
+                            ? theme.colorScheme.surface 
+                            : Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.grey.shade200,
+                          color: isDark
+                              ? Colors.grey.shade800
+                              : Colors.grey.shade200,
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.shade200,
+                            color: isDark
+                                ? Colors.black12
+                                : Colors.grey.shade200,
                             blurRadius: 4,
                             spreadRadius: 1,
                             offset: const Offset(0, 2),
@@ -564,14 +599,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: TabBar(
                         indicator: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          gradient: const LinearGradient(
-                            colors: [AppTheme.primaryColor, Color(0xFF2A78D8)],
+                          gradient: LinearGradient(
+                            colors: [
+                              theme.colorScheme.primary,
+                              theme.colorScheme.primary.withValues(alpha: 0.8),
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primaryColor.withOpacity(0.3),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                               spreadRadius: 0,
@@ -582,7 +620,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         indicatorPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
                         dividerColor: Colors.transparent,
                         labelColor: Colors.white,
-                        unselectedLabelColor: AppTheme.textSecondaryColor,
+                        unselectedLabelColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         labelStyle: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -593,11 +631,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
                         labelPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                        tabs: [
+                        tabs: const [
                           Tab(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.access_time_rounded, size: 18),
                                 SizedBox(width: 8),
                                 Text('Upcoming'),
@@ -607,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Tab(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.check_circle_outline_rounded, size: 18),
                                 SizedBox(width: 8),
                                 Text('Completed'),
@@ -617,7 +655,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Tab(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.cancel_outlined, size: 18),
                                 SizedBox(width: 8),
                                 Text('Cancelled'),
@@ -649,6 +687,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAppointmentList(AppointmentStatus status) {
+    final theme = Theme.of(context);
+    
     final filteredAppointments = _appointments
         .where((appointment) => appointment.status == status)
         .toList();
@@ -661,11 +701,11 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: _getStatusColor(status).withOpacity(0.1),
+                color: _getStatusColor(status).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: _getStatusColor(status).withOpacity(0.2),
+                    color: _getStatusColor(status).withValues(alpha: 0.2),
                     blurRadius: 15,
                     spreadRadius: 0,
                     offset: const Offset(0, 5),
@@ -681,7 +721,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             Text(
               'No ${status.name.capitalize()} Appointments',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
               ),
@@ -691,7 +731,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _getEmptyStatusMessage(status),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppTheme.textSecondaryColor,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 fontSize: 14,
               ),
             ),
@@ -704,14 +744,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.add, size: 20),
                 label: const Text('Book Appointment'),
                 style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: AppTheme.primaryColor,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 2,
-                  shadowColor: AppTheme.primaryColor.withOpacity(0.3),
                 ),
               ),
           ],
@@ -720,28 +756,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(top: 12, bottom: 16),
       itemCount: filteredAppointments.length,
+      padding: const EdgeInsets.only(bottom: 40),
       itemBuilder: (context, index) {
         final appointment = filteredAppointments[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: AppointmentCard(
-            doctorName: appointment.doctorName,
-            doctorSpecialty: appointment.doctorSpecialty,
-            doctorImage: appointment.doctorImage,
-            appointmentDate: appointment.date,
-            appointmentTime: appointment.time,
-            status: appointment.status,
-            onTap: () {
-              final doctor = _getDoctorFromAppointment(appointment);
-              Navigator.pushNamed(
-                context,
-                AppRoutes.appointmentBooking,
-                arguments: doctor,
-              );
-            },
-          ),
+        
+        return AppointmentCard(
+          doctorName: appointment.doctorName,
+          doctorSpecialty: appointment.doctorSpecialty,
+          doctorImage: appointment.doctorImage,
+          appointmentDate: appointment.date,
+          appointmentTime: appointment.time,
+          status: appointment.status,
+          onTap: () {
+            final doctor = _getDoctorFromAppointment(appointment);
+            Navigator.pushNamed(
+              context,
+              AppRoutes.appointmentBooking,
+              arguments: doctor,
+            );
+          },
         );
       },
     );
@@ -770,13 +804,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Color _getStatusColor(AppointmentStatus status) {
+    final theme = Theme.of(context);
+    
     switch (status) {
       case AppointmentStatus.upcoming:
-        return AppTheme.primaryColor;
+        return theme.colorScheme.primary;
       case AppointmentStatus.completed:
-        return AppTheme.successColor;
+        return Colors.green;
       case AppointmentStatus.cancelled:
-        return AppTheme.errorColor;
+        return Colors.red;
     }
   }
 
@@ -981,7 +1017,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(

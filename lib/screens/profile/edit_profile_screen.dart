@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/user.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 
@@ -93,12 +95,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         });
         
         // Return to previous screen with updated user data
-        Navigator.pop(context, updatedUser);
+        if (mounted) {
+          Navigator.pop(context, updatedUser);
+        }
       });
     }
   }
 
   Future<void> _selectDate() async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     final initialDate = widget.user.dateOfBirth != null
         ? DateTime.tryParse(widget.user.dateOfBirth!)
         : DateTime.now().subtract(const Duration(days: 365 * 18)); // Default to 18 years ago
@@ -111,9 +118,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppTheme.primaryColor,
-            ),
+            colorScheme: isDarkMode
+                ? ColorScheme.dark(
+                    primary: AppTheme.primaryColor,
+                    surface: AppTheme.darkCardColor,
+                  )
+                : const ColorScheme.light(
+                    primary: AppTheme.primaryColor,
+                  ),
           ),
           child: child!,
         );
@@ -129,9 +141,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
+        elevation: isDarkMode ? 0 : 1,
       ),
       body: SafeArea(
         child: Form(
@@ -141,7 +157,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _buildProfileImage(),
+                _buildProfileImage(isDarkMode),
                 const SizedBox(height: 24),
                 CustomTextField(
                   label: 'Full Name',
@@ -267,10 +283,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                CustomButton(
-                  text: 'Save Changes',
-                  onTap: _saveProfile,
-                  isLoading: _isLoading,
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDarkMode 
+                              ? Colors.grey.shade800 
+                              : Colors.grey.shade200,
+                          foregroundColor: isDarkMode 
+                              ? AppTheme.darkTextPrimaryColor 
+                              : AppTheme.textPrimaryColor,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: CustomButton(
+                        text: 'Save Changes',
+                        onTap: _saveProfile,
+                        isLoading: _isLoading,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -280,7 +328,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildProfileImage() {
+  Widget _buildProfileImage(bool isDarkMode) {
     return Column(
       children: [
         Stack(
@@ -294,6 +342,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   color: AppTheme.primaryColor,
                   width: 3,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDarkMode
+                        ? Colors.black.withValues(alpha: 77)
+                        : Colors.grey.withValues(alpha: 77),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(60),
@@ -301,10 +358,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   widget.user.profileImage ?? '',
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.person,
-                      size: 60,
-                      color: AppTheme.primaryColor,
+                    return Container(
+                      color: isDarkMode ? AppTheme.darkCardColor : const Color(0xFFF7F8F9),
+                      child: Icon(
+                        Icons.person,
+                        size: 60,
+                        color: AppTheme.primaryColor,
+                      ),
                     );
                   },
                 ),
@@ -319,13 +379,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   color: AppTheme.primaryColor,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white,
+                    color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
                     width: 2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDarkMode
+                          ? Colors.black.withValues(alpha: 77)
+                          : Colors.grey.withValues(alpha: 77),
+                      blurRadius: 5,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.camera_alt,
-                  color: Colors.white,
+                  color: isDarkMode ? Colors.white : Colors.white,
                   size: 20,
                 ),
               ),
@@ -337,7 +406,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onPressed: () {
             // Implement image picker functionality
           },
-          child: const Text(
+          child: Text(
             'Change Photo',
             style: TextStyle(
               color: AppTheme.primaryColor,
@@ -356,23 +425,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required void Function(String?) onChanged,
     required IconData icon,
   }) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimaryColor,
+            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F8F9),
-            borderRadius: BorderRadius.circular(12),
+            color: isDarkMode ? AppTheme.darkCardColor : const Color(0xFFF7F8F9),
+            borderRadius: BorderRadius.circular(24),
+            border: isDarkMode
+                ? Border.all(color: Colors.grey.shade800, width: 1)
+                : null,
+            boxShadow: isDarkMode
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 26),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
           ),
           child: Row(
             children: [
@@ -382,23 +467,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: value,
-                    isExpanded: true,
-                    icon: const Icon(Icons.arrow_drop_down),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                    items: items.map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: onChanged,
+                child: DropdownButton<String>(
+                  value: value,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  icon: Icon(
+                    Icons.arrow_drop_down,
+                    color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                   ),
+                  iconSize: 24,
+                  elevation: 16,
+                  style: TextStyle(
+                    color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+                    fontSize: 16,
+                  ),
+                  dropdownColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                  items: items.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: onChanged,
                 ),
               ),
             ],

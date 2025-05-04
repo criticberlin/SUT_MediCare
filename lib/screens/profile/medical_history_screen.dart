@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/user.dart';
 import '../../utils/theme/app_theme.dart';
+import '../../utils/theme/theme_provider.dart';
 import '../../widgets/custom_button.dart';
-import '../../widgets/custom_text_field.dart';
 
 class MedicalHistoryScreen extends StatefulWidget {
   const MedicalHistoryScreen({super.key});
@@ -11,18 +12,50 @@ class MedicalHistoryScreen extends StatefulWidget {
   State<MedicalHistoryScreen> createState() => _MedicalHistoryScreenState();
 }
 
-class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
+class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with SingleTickerProviderStateMixin {
   late User _user;
   final TextEditingController _allergiesController = TextEditingController();
   final TextEditingController _medicationsController = TextEditingController();
   final TextEditingController _conditionsController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  int _selectedCategory = 0;
+  
+  final List<Map<String, dynamic>> _categories = [
+    {
+      'title': 'Allergies',
+      'icon': Icons.dangerous_outlined,
+      'color': Colors.redAccent,
+    },
+    {
+      'title': 'Medications',
+      'icon': Icons.medication_outlined,
+      'color': Colors.blueAccent,
+    },
+    {
+      'title': 'Conditions',
+      'icon': Icons.healing_outlined,
+      'color': Colors.orangeAccent,
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
     _user = User.getCurrentUser();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    _animationController.forward();
   }
 
   @override
@@ -30,6 +63,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
     _allergiesController.dispose();
     _medicationsController.dispose();
     _conditionsController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -42,6 +76,9 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
       _user = _user.copyWith(allergies: allergies);
       _allergiesController.clear();
     });
+    
+    _animationController.reset();
+    _animationController.forward();
   }
 
   void _removeAllergy(int index) {
@@ -61,6 +98,9 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
       _user = _user.copyWith(medications: medications);
       _medicationsController.clear();
     });
+    
+    _animationController.reset();
+    _animationController.forward();
   }
 
   void _removeMedication(int index) {
@@ -80,6 +120,9 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
       _user = _user.copyWith(chronicConditions: conditions);
       _conditionsController.clear();
     });
+    
+    _animationController.reset();
+    _animationController.forward();
   }
 
   void _removeCondition(int index) {
@@ -98,74 +141,110 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
     // In a real app, this would save the updated user data to a database or API
     // For now, we'll just simulate a delay
     Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Medical history updated successfully'),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Medical history updated successfully'),
+            ],
+          ),
           backgroundColor: AppTheme.successColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: EdgeInsets.all(8),
         ),
       );
     });
   }
 
+  void _changeCategory(int index) {
+    setState(() {
+      _selectedCategory = index;
+    });
+    _animationController.reset();
+    _animationController.forward();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Medical History'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.help_outline, 
+              color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+            ),
+            onPressed: () {
+              // Show help dialog with medical history tips
+              showDialog(
+                context: context, 
+                builder: (context) => AlertDialog(
+                  title: Text('About Medical History',
+                    style: TextStyle(
+                      color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: Text(
+                    'Your medical history helps doctors provide better care. Keep this information updated for the best medical advice.',
+                    style: TextStyle(
+                      color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      child: Text('Got it'),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            _buildSection(
-              title: 'Allergies',
-              icon: Icons.dangerous,
-              items: _user.allergies ?? [],
-              controller: _allergiesController,
-              addItem: _addAllergy,
-              removeItem: _removeAllergy,
-              placeholder: 'Add an allergy',
-              emptyMessage: 'No allergies recorded',
+            _buildCategorySelector(isDarkMode),
+            Expanded(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: _buildSelectedCategoryContent(isDarkMode),
+              ),
             ),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'Current Medications',
-              icon: Icons.medication,
-              items: _user.medications ?? [],
-              controller: _medicationsController,
-              addItem: _addMedication,
-              removeItem: _removeMedication,
-              placeholder: 'Add a medication',
-              emptyMessage: 'No medications recorded',
-            ),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'Chronic Conditions',
-              icon: Icons.healing,
-              items: _user.chronicConditions ?? [],
-              controller: _conditionsController,
-              addItem: _addCondition,
-              removeItem: _removeCondition,
-              placeholder: 'Add a chronic condition',
-              emptyMessage: 'No chronic conditions recorded',
-            ),
-            const SizedBox(height: 32),
-            CustomButton(
-              text: 'Save Medical History',
-              onTap: _saveMedicalHistory,
-              isLoading: _isLoading,
-            ),
-            const SizedBox(height: 16),
-            CustomButton(
-              text: 'Upload Medical Records',
-              onTap: () {
-                // Navigate to upload medical records screen
-              },
-              isOutlined: true,
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  CustomButton(
+                    text: 'Save Medical History',
+                    onTap: _saveMedicalHistory,
+                    isLoading: _isLoading,
+                  ),
+                  const SizedBox(height: 16),
+                  CustomButton(
+                    text: 'Upload Medical Records',
+                    onTap: () {
+                      // Navigate to upload medical records screen
+                    },
+                    isOutlined: true,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -173,66 +252,315 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
     );
   }
 
-  Widget _buildSection({
-    required String title,
-    required IconData icon,
-    required List<String> items,
-    required TextEditingController controller,
-    required Function(String) addItem,
-    required Function(int) removeItem,
-    required String placeholder,
-    required String emptyMessage,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: CustomTextField(
-                hint: placeholder,
-                controller: controller,
-                suffixIcon: IconButton(
-                  icon: const Icon(
-                    Icons.add_circle,
-                    color: AppTheme.primaryColor,
-                  ),
-                  onPressed: () => addItem(controller.text),
+  Widget _buildCategorySelector(bool isDarkMode) {
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+                ? Colors.black.withValues(alpha: 0.2) 
+                : Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          final isSelected = _selectedCategory == index;
+          final category = _categories[index];
+          
+          return GestureDetector(
+            onTap: () => _changeCategory(index),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? category['color'].withValues(alpha: isDarkMode ? 0.2 : 0.1)
+                    : isDarkMode 
+                        ? Colors.grey.shade800.withValues(alpha: 0.3)
+                        : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected 
+                      ? category['color'] 
+                      : isDarkMode 
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300,
+                  width: isSelected ? 2 : 1,
                 ),
-                onChanged: (value) {
-                  // Enable submission with enter key
-                  if (value.contains('\n')) {
-                    addItem(value.replaceAll('\n', ''));
-                  }
-                },
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    category['icon'],
+                    color: isSelected 
+                        ? category['color']
+                        : isDarkMode 
+                            ? AppTheme.darkTextSecondaryColor
+                            : AppTheme.textSecondaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    category['title'],
+                    style: TextStyle(
+                      color: isSelected 
+                          ? category['color']
+                          : isDarkMode 
+                              ? AppTheme.darkTextPrimaryColor
+                              : AppTheme.textPrimaryColor,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectedCategoryContent(bool isDarkMode) {
+    switch (_selectedCategory) {
+      case 0:
+        return _buildAllergiesSection(isDarkMode);
+      case 1:
+        return _buildMedicationsSection(isDarkMode);
+      case 2:
+        return _buildConditionsSection(isDarkMode);
+      default:
+        return _buildAllergiesSection(isDarkMode);
+    }
+  }
+
+  Widget _buildAllergiesSection(bool isDarkMode) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            'Allergies', 
+            Icons.dangerous_outlined, 
+            Colors.redAccent,
+            isDarkMode,
+          ),
+          const SizedBox(height: 16),
+          _buildInputField(
+            _allergiesController,
+            'Add an allergy',
+            Icons.add_circle,
+            Colors.redAccent,
+            () => _addAllergy(_allergiesController.text),
+            isDarkMode,
+          ),
+          const SizedBox(height: 24),
+          _user.allergies == null || _user.allergies!.isEmpty
+              ? _buildEmptyState(
+                  Icons.dangerous_outlined, 
+                  'No allergies recorded', 
+                  Colors.redAccent,
+                  isDarkMode,
+                )
+              : _buildItemsList(
+                  _user.allergies!, 
+                  Icons.dangerous_outlined, 
+                  Colors.redAccent,
+                  _removeAllergy,
+                  isDarkMode,
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMedicationsSection(bool isDarkMode) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            'Current Medications', 
+            Icons.medication_outlined, 
+            Colors.blueAccent,
+            isDarkMode,
+          ),
+          const SizedBox(height: 16),
+          _buildInputField(
+            _medicationsController,
+            'Add a medication',
+            Icons.add_circle,
+            Colors.blueAccent,
+            () => _addMedication(_medicationsController.text),
+            isDarkMode,
+          ),
+          const SizedBox(height: 24),
+          _user.medications == null || _user.medications!.isEmpty
+              ? _buildEmptyState(
+                  Icons.medication_outlined, 
+                  'No medications recorded', 
+                  Colors.blueAccent,
+                  isDarkMode,
+                )
+              : _buildItemsList(
+                  _user.medications!, 
+                  Icons.medication_outlined, 
+                  Colors.blueAccent,
+                  _removeMedication,
+                  isDarkMode,
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConditionsSection(bool isDarkMode) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            'Chronic Conditions', 
+            Icons.healing_outlined, 
+            Colors.orangeAccent,
+            isDarkMode,
+          ),
+          const SizedBox(height: 16),
+          _buildInputField(
+            _conditionsController,
+            'Add a chronic condition',
+            Icons.add_circle,
+            Colors.orangeAccent,
+            () => _addCondition(_conditionsController.text),
+            isDarkMode,
+          ),
+          const SizedBox(height: 24),
+          _user.chronicConditions == null || _user.chronicConditions!.isEmpty
+              ? _buildEmptyState(
+                  Icons.healing_outlined, 
+                  'No chronic conditions recorded', 
+                  Colors.orangeAccent,
+                  isDarkMode,
+                )
+              : _buildItemsList(
+                  _user.chronicConditions!, 
+                  Icons.healing_outlined, 
+                  Colors.orangeAccent,
+                  _removeCondition,
+                  isDarkMode,
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon, Color color, bool isDarkMode) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 28,
+          ),
         ),
-        const SizedBox(height: 16),
-        items.isEmpty
-            ? _buildEmptyState(icon, emptyMessage)
-            : _buildItemList(items, icon, removeItem),
+        const SizedBox(width: 16),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildEmptyState(IconData icon, String message) {
+  Widget _buildInputField(
+    TextEditingController controller,
+    String placeholder,
+    IconData iconData,
+    Color color,
+    VoidCallback onAdd,
+    bool isDarkMode,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: isDarkMode 
+                ? Colors.black.withValues(alpha: 0.2) 
+                : Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          hintText: placeholder,
+          hintStyle: TextStyle(
+            color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          border: InputBorder.none,
+          suffixIcon: IconButton(
+            icon: Icon(
+              iconData,
+              color: color,
+            ),
+            onPressed: onAdd,
+          ),
+        ),
+        style: TextStyle(
+          color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+        ),
+        onSubmitted: (value) {
+          if (value.isNotEmpty) {
+            onAdd();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(IconData icon, String message, Color color, bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+                ? Colors.black.withValues(alpha: 0.2) 
+                : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -240,20 +568,37 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
       ),
       child: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: AppTheme.textSecondaryColor,
-              size: 48,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 48,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               message,
-              style: const TextStyle(
-                color: AppTheme.textSecondaryColor,
+              style: TextStyle(
+                color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap the + button above to add',
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -261,54 +606,90 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
     );
   }
 
-  Widget _buildItemList(List<String> items, IconData icon, Function(int) removeItem) {
-    return Container(
+  Widget _buildItemsList(
+    List<String> items,
+    IconData icon,
+    Color color,
+    Function(int) removeItem,
+    bool isDarkMode,
+  ) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        return _buildItemCard(
+          items[index], 
+          icon, 
+          color, 
+          () => removeItem(index),
+          index,
+          isDarkMode,
+        );
+      },
+    );
+  }
+
+  Widget _buildItemCard(
+    String item,
+    IconData icon,
+    Color color,
+    VoidCallback onRemove,
+    int index,
+    bool isDarkMode,
+  ) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300 + (index * 50)),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: isDarkMode 
+                ? Colors.black.withValues(alpha: 0.2) 
+                : Colors.grey.withValues(alpha: 0.1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        itemCount: items.length,
-        separatorBuilder: (context, index) => const Divider(
-          height: 1,
-          indent: 16,
-          endIndent: 16,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: AppTheme.primaryColor,
-                size: 20,
-              ),
-            ),
-            title: Text(items[index]),
-            trailing: IconButton(
-              icon: const Icon(
-                Icons.delete_outline,
-                color: AppTheme.errorColor,
-                size: 20,
-              ),
-              onPressed: () => removeItem(index),
-            ),
-          );
-        },
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          item,
+          style: TextStyle(
+            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
+            fontWeight: FontWeight.w500,
+            fontSize: 16,
+          ),
+        ),
+        trailing: IconButton(
+          icon: Icon(
+            Icons.delete_outline,
+            color: isDarkMode ? Colors.redAccent.shade200 : Colors.redAccent,
+            size: 20,
+          ),
+          onPressed: onRemove,
+        ),
       ),
     );
   }

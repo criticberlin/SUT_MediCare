@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../utils/theme/app_theme.dart';
+import '../utils/theme/theme_provider.dart';
 
 class CustomTextField extends StatefulWidget {
   final String? label;
@@ -57,16 +59,21 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.label != null) ...[
           Text(
             widget.label!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: AppTheme.textPrimaryColor,
+              color: isDarkMode 
+                  ? AppTheme.darkTextPrimaryColor 
+                  : AppTheme.textPrimaryColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -83,14 +90,18 @@ class _CustomTextFieldState extends State<CustomTextField> {
           onTap: widget.onTap,
           validator: widget.validator,
           autofocus: widget.autoFocus,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
-            color: AppTheme.textPrimaryColor,
+            color: isDarkMode 
+                ? AppTheme.darkTextPrimaryColor 
+                : AppTheme.textPrimaryColor,
           ),
           decoration: InputDecoration(
             hintText: widget.hint,
-            hintStyle: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            hintStyle: TextStyle(
+              color: isDarkMode 
+                  ? AppTheme.darkTextSecondaryColor 
+                  : AppTheme.textSecondaryColor,
               fontSize: 16,
             ),
             errorText: widget.errorText,
@@ -99,7 +110,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 ? IconButton(
                     icon: Icon(
                       _obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: AppTheme.textSecondaryColor,
+                      color: isDarkMode 
+                          ? AppTheme.darkTextSecondaryColor 
+                          : AppTheme.textSecondaryColor,
                     ),
                     onPressed: () {
                       setState(() {
@@ -109,18 +122,24 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   )
                 : widget.suffixIcon,
             filled: true,
-            fillColor: const Color(0xFFF7F8F9),
+            fillColor: isDarkMode 
+                ? AppTheme.darkCardColor 
+                : const Color(0xFFF7F8F9),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
+              borderSide: isDarkMode
+                  ? BorderSide(color: Colors.grey.shade800, width: 1)
+                  : BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
+              borderSide: isDarkMode
+                  ? BorderSide(color: Colors.grey.shade800, width: 1)
+                  : BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -135,6 +154,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               borderSide: const BorderSide(color: AppTheme.errorColor, width: 1),
             ),
           ),
+          cursorColor: AppTheme.primaryColor,
         ),
       ],
     );

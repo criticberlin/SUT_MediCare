@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/theme/app_theme.dart';
+import '../utils/theme/theme_provider.dart';
 
 class DoctorCard extends StatelessWidget {
   final String name;
@@ -23,17 +25,20 @@ class DoctorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: isFeatured ? 220 : double.infinity,
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.shadowColor,
+              color: isDarkMode ? Colors.black.withValues(alpha: 0.2) : AppTheme.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 2),
               spreadRadius: 1,
@@ -51,7 +56,7 @@ class DoctorCard extends StatelessWidget {
                     tag: 'doctor-$name',
                     child: CircleAvatar(
                       radius: 36,
-                      backgroundColor: AppTheme.lightBlueBackground,
+                      backgroundColor: isDarkMode ? AppTheme.darkCardColor.withValues(alpha: 0.7) : AppTheme.lightBlueBackground,
                       backgroundImage: NetworkImage(imageUrl),
                       onBackgroundImageError: (_, __) {},
                       child: imageUrl.isEmpty
@@ -70,10 +75,10 @@ class DoctorCard extends StatelessWidget {
                       children: [
                         Text(
                           'Dr. $name',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimaryColor,
+                            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -81,9 +86,9 @@ class DoctorCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           specialty,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppTheme.textSecondaryColor,
+                            color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -97,26 +102,26 @@ class DoctorCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               rating.toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
-                                color: AppTheme.textPrimaryColor,
+                                color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
                               ),
                             ),
                             const SizedBox(width: 16),
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.work_outline,
-                                  color: AppTheme.textSecondaryColor,
+                                  color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '$experience yrs',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
-                                    color: AppTheme.textSecondaryColor,
+                                    color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
                                   ),
                                 ),
                               ],
@@ -133,14 +138,14 @@ class DoctorCard extends StatelessWidget {
               Divider(
                 height: 1,
                 thickness: 1,
-                color: Colors.grey.withOpacity(0.1),
+                color: isDarkMode ? Colors.grey.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.1),
               ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(20),
                     bottomRight: Radius.circular(20),
                   ),
