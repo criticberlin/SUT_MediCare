@@ -19,60 +19,6 @@ class NotificationItem {
     required this.isRead,
     required this.type,
   });
-
-  // Get dummy notifications for testing
-  static List<NotificationItem> getDummyNotifications() {
-    return [
-      NotificationItem(
-        id: '1',
-        title: 'Appointment Confirmed',
-        message: 'Your appointment with Dr. Ahmed Kamal has been confirmed for tomorrow at 10:00 AM.',
-        time: DateTime.now().subtract(const Duration(hours: 2)),
-        isRead: false,
-        type: NotificationType.appointment,
-      ),
-      NotificationItem(
-        id: '2',
-        title: 'New Message',
-        message: 'Dr. Tarek Mahmoud sent you a message regarding your recent lab results.',
-        time: DateTime.now().subtract(const Duration(hours: 5)),
-        isRead: true,
-        type: NotificationType.message,
-      ),
-      NotificationItem(
-        id: '3',
-        title: 'Medication Reminder',
-        message: 'Don\'t forget to take your medication today at 8:00 PM.',
-        time: DateTime.now().subtract(const Duration(days: 1)),
-        isRead: false,
-        type: NotificationType.reminder,
-      ),
-      NotificationItem(
-        id: '4',
-        title: 'Appointment Reminder',
-        message: 'Your appointment with Dr. Nour El-Sayed is scheduled for tomorrow at 2:30 PM.',
-        time: DateTime.now().subtract(const Duration(days: 1, hours: 6)),
-        isRead: true,
-        type: NotificationType.appointment,
-      ),
-      NotificationItem(
-        id: '5',
-        title: 'Special Offer',
-        message: 'Get 20% off on your next consultation when booked before the end of the month.',
-        time: DateTime.now().subtract(const Duration(days: 2)),
-        isRead: true,
-        type: NotificationType.promotion,
-      ),
-      NotificationItem(
-        id: '6',
-        title: 'Health Tips',
-        message: 'Staying hydrated is essential for maintaining good health. Aim to drink at least 8 glasses of water daily.',
-        time: DateTime.now().subtract(const Duration(days: 3)),
-        isRead: true,
-        type: NotificationType.general,
-      ),
-    ];
-  }
 }
 
 enum NotificationType {
@@ -98,7 +44,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    _notifications = NotificationItem.getDummyNotifications();
+    _notifications = [];
     _filteredNotifications = _notifications;
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabChange);
@@ -422,8 +368,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> with SingleTi
                 textColor: AppTheme.primaryColor,
                 onPressed: () {
                   setState(() {
-                    final deletedNotification = NotificationItem.getDummyNotifications()
-                        .firstWhere((item) => item.id == notification.id);
+                    final deletedNotification = NotificationItem(
+                      id: notification.id,
+                      title: notification.title,
+                      message: notification.message,
+                      time: notification.time,
+                      isRead: notification.isRead,
+                      type: notification.type,
+                    );
                     _notifications.add(deletedNotification);
                     _notifications.sort((a, b) => b.time.compareTo(a.time));
                     

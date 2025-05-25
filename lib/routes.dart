@@ -21,7 +21,16 @@ class AppRoutes {
   
   // Profile-related routes
   static const String editProfile = '/edit-profile';
+  static const String doctorProfileForm = '/doctor-profile-form';
+  static const String patientProfileForm = '/patient-profile-form';
   static const String medicalHistory = '/medical-history';
   static const String paymentMethods = '/payment-methods';
   static const String helpSupport = '/help-support';
+
+  // Doctor-specific routes
+  static const String doctorDashboard = '/doctor-dashboard';
+  static const String doctorAppointments = '/doctor-appointments';
+  static const String doctorPatients = '/doctor-patients';
+  static const String doctorSchedule = '/doctor-schedule';
+  static const String doctorEarnings = '/doctor-earnings';
 } 

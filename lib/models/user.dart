@@ -17,6 +17,20 @@ class User {
   final List<String>? allergies;
   final List<String>? medications;
   final List<String>? chronicConditions;
+  
+  // Doctor-specific fields
+  final String? specialization;
+  final int? yearsOfExperience;
+  final String? qualifications;
+  final String? licenseNumber;
+  final String? hospital;
+  final bool? isVerified;
+  final double? rating;
+  final int? totalReviews;
+  final List<String>? languages;
+  final Map<String, dynamic>? availability;
+  final List<String>? acceptedInsurance;
+  final double? consultationFee;
 
   User({
     required this.id,
@@ -34,6 +48,19 @@ class User {
     this.allergies,
     this.medications,
     this.chronicConditions,
+    // Doctor-specific fields
+    this.specialization,
+    this.yearsOfExperience,
+    this.qualifications,
+    this.licenseNumber,
+    this.hospital,
+    this.isVerified,
+    this.rating,
+    this.totalReviews,
+    this.languages,
+    this.availability,
+    this.acceptedInsurance,
+    this.consultationFee,
   });
 
   // Convert User object to Map
@@ -54,6 +81,19 @@ class User {
       'allergies': allergies,
       'medications': medications,
       'chronicConditions': chronicConditions,
+      // Doctor-specific fields
+      'specialization': specialization,
+      'yearsOfExperience': yearsOfExperience,
+      'qualifications': qualifications,
+      'licenseNumber': licenseNumber,
+      'hospital': hospital,
+      'isVerified': isVerified,
+      'rating': rating,
+      'totalReviews': totalReviews,
+      'languages': languages,
+      'availability': availability,
+      'acceptedInsurance': acceptedInsurance,
+      'consultationFee': consultationFee,
     };
   }
 
@@ -75,6 +115,19 @@ class User {
       allergies: map['allergies'] != null ? List<String>.from(map['allergies']) : null,
       medications: map['medications'] != null ? List<String>.from(map['medications']) : null,
       chronicConditions: map['chronicConditions'] != null ? List<String>.from(map['chronicConditions']) : null,
+      // Doctor-specific fields
+      specialization: map['specialization'],
+      yearsOfExperience: map['yearsOfExperience'],
+      qualifications: map['qualifications'],
+      licenseNumber: map['licenseNumber'],
+      hospital: map['hospital'],
+      isVerified: map['isVerified'],
+      rating: map['rating']?.toDouble(),
+      totalReviews: map['totalReviews'],
+      languages: map['languages'] != null ? List<String>.from(map['languages']) : null,
+      availability: map['availability'],
+      acceptedInsurance: map['acceptedInsurance'] != null ? List<String>.from(map['acceptedInsurance']) : null,
+      consultationFee: map['consultationFee']?.toDouble(),
     );
   }
 
@@ -160,6 +213,19 @@ class User {
     List<String>? allergies,
     List<String>? medications,
     List<String>? chronicConditions,
+    // Doctor-specific fields
+    String? specialization,
+    int? yearsOfExperience,
+    String? qualifications,
+    String? licenseNumber,
+    String? hospital,
+    bool? isVerified,
+    double? rating,
+    int? totalReviews,
+    List<String>? languages,
+    Map<String, dynamic>? availability,
+    List<String>? acceptedInsurance,
+    double? consultationFee,
   }) {
     return User(
       id: id ?? this.id,
@@ -177,6 +243,19 @@ class User {
       allergies: allergies ?? this.allergies,
       medications: medications ?? this.medications,
       chronicConditions: chronicConditions ?? this.chronicConditions,
+      // Doctor-specific fields
+      specialization: specialization ?? this.specialization,
+      yearsOfExperience: yearsOfExperience ?? this.yearsOfExperience,
+      qualifications: qualifications ?? this.qualifications,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      hospital: hospital ?? this.hospital,
+      isVerified: isVerified ?? this.isVerified,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
+      languages: languages ?? this.languages,
+      availability: availability ?? this.availability,
+      acceptedInsurance: acceptedInsurance ?? this.acceptedInsurance,
+      consultationFee: consultationFee ?? this.consultationFee,
     );
   }
 

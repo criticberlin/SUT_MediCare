@@ -5,6 +5,7 @@ import '../models/user.dart' as app_user;
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../routes.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -213,5 +214,32 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  String getInitialRoute() {
+    if (!_isAuthenticated || _user == null) {
+      return AppRoutes.login;
+    }
+
+    // If the user is a doctor and hasn't completed their profile
+    if (_user!.role == 'doctor' && 
+        (_user!.specialization == null || 
+         _user!.yearsOfExperience == null || 
+         _user!.qualifications == null || 
+         _user!.licenseNumber == null)) {
+      return AppRoutes.doctorProfileForm;
+    }
+
+    // If the user is a patient and hasn't completed their profile
+    if (_user!.role == 'patient' && 
+        (_user!.phone == null || 
+         _user!.address == null || 
+         _user!.dateOfBirth == null || 
+         _user!.gender == null)) {
+      return AppRoutes.patientProfileForm;
+    }
+
+    // If the user has completed their profile
+    return AppRoutes.home;
   }
 } 

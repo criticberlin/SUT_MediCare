@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../../routes.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -131,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           margin: const EdgeInsets.all(8),
-          ),
+        ),
       );
     } catch (e) {
       print('Error updating profile: $e');
@@ -166,10 +167,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _auth.signOut();
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/login');
+      Navigator.of(context).pushReplacementNamed(AppRoutes.login);
     } catch (e) {
       print('Error signing out: $e');
       // Handle error appropriately
+    }
+  }
+
+  void _navigateToProfileForm() {
+    if (_user == null) return;
+
+    if (_user!.role == 'doctor') {
+      Navigator.of(context).pushNamed(
+        AppRoutes.doctorProfileForm,
+        arguments: _user,
+      );
+    } else {
+      Navigator.of(context).pushNamed(
+        AppRoutes.patientProfileForm,
+        arguments: _user,
+      );
     }
   }
 
@@ -181,8 +198,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
-    );
-  }
+      );
+    }
 
     if (_user == null) {
       return const Center(
@@ -201,104 +218,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: _pickImage,
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                      backgroundImage: _profileImage != null
-                          ? FileImage(_profileImage!)
-                          : (_user!.profileImage != null
-                              ? NetworkImage(_user!.profileImage!)
-                              : null) as ImageProvider?,
-                      child: _profileImage == null && _user!.profileImage == null
-                          ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                          : null,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: _pickImage,
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                    backgroundImage: _profileImage != null
+                        ? FileImage(_profileImage!)
+                        : (_user!.profileImage != null
+                            ? NetworkImage(_user!.profileImage!)
+                            : null) as ImageProvider?,
+                    child: _profileImage == null && _user!.profileImage == null
+                        ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                        : null,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        shape: BoxShape.circle,
                       ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _user!.name,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _user!.email,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _user!.role.toUpperCase(),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
+            ),
+            const SizedBox(height: 24),
+            if (_user!.role == 'doctor') ...[
+              ListTile(
+                leading: const Icon(Icons.dashboard),
+                title: const Text('Dashboard'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorDashboard),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixIcon: Icon(Icons.phone),
-                ),
-                keyboardType: TextInputType.phone,
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Appointments'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorAppointments),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Address',
-                  prefixIcon: Icon(Icons.location_on),
-                ),
-                maxLines: 2,
+              ListTile(
+                leading: const Icon(Icons.people),
+                title: const Text('Patients'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorPatients),
               ),
-              const SizedBox(height: 24),
-              CustomButton(
-                text: 'Update Profile',
-                onTap: _updateProfile,
-                isLoading: _isLoading,
+              ListTile(
+                leading: const Icon(Icons.schedule),
+                title: const Text('Schedule'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorSchedule),
+              ),
+              ListTile(
+                leading: const Icon(Icons.attach_money),
+                title: const Text('Earnings'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorEarnings),
+              ),
+            ] else ...[
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Appointment History'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.appointmentHistory),
+              ),
+              ListTile(
+                leading: const Icon(Icons.medical_services),
+                title: const Text('Medical History'),
+                onTap: () => Navigator.of(context).pushNamed(AppRoutes.medicalHistory),
               ),
             ],
-          ),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit Profile'),
+              onTap: _navigateToProfileForm,
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () => Navigator.of(context).pushNamed(AppRoutes.settings),
+            ),
+            ListTile(
+              leading: const Icon(Icons.help),
+              title: const Text('Help & Support'),
+              onTap: () => Navigator.of(context).pushNamed(AppRoutes.helpSupport),
+            ),
+          ],
         ),
       ),
     );
