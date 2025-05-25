@@ -67,7 +67,7 @@ class DoctorDetailScreen extends StatelessWidget {
                           return Container(
                             width: 100,
                             height: 100,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 26),
+                            color: theme.colorScheme.onSurface.withOpacity(0.1),
                             child: Icon(Icons.person, size: 50, color: theme.colorScheme.onSurface),
                           );
                         },
@@ -81,7 +81,7 @@ class DoctorDetailScreen extends StatelessWidget {
                           return Container(
                             width: 100,
                             height: 100,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 26),
+                            color: theme.colorScheme.onSurface.withOpacity(0.1),
                             child: Icon(Icons.person, size: 50, color: theme.colorScheme.onSurface),
                           );
                         },
@@ -101,7 +101,7 @@ class DoctorDetailScreen extends StatelessWidget {
                     Text(
                       doctor.specialty,
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 153),
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -124,7 +124,7 @@ class DoctorDetailScreen extends StatelessWidget {
                         Text(
                           '(${doctor.reviews.length} reviews)',
                           style: TextStyle(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 153),
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
                             fontSize: 12,
                           ),
                         ),
@@ -151,7 +151,7 @@ class DoctorDetailScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: theme.colorScheme.onSurface.withValues(alpha: 153),
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
           ),
@@ -183,7 +183,7 @@ class DoctorDetailScreen extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: theme.colorScheme.onSurface.withValues(alpha: 153),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
       ],
@@ -209,7 +209,7 @@ class DoctorDetailScreen extends StatelessWidget {
             ),
             child: TabBar(
               labelColor: theme.colorScheme.primary,
-              unselectedLabelColor: theme.colorScheme.onSurface.withValues(alpha: 153),
+              unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
               indicatorColor: theme.colorScheme.primary,
               indicatorWeight: 3,
               tabs: const [
@@ -315,7 +315,7 @@ class DoctorDetailScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 26),
+                        color: theme.colorScheme.primary.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -346,7 +346,7 @@ class DoctorDetailScreen extends StatelessWidget {
           ? Center(
               child: Text(
                 'No reviews yet',
-                style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 153)),
+                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6)),
               ),
             )
           : ListView.builder(
@@ -405,7 +405,7 @@ class DoctorDetailScreen extends StatelessWidget {
                       Text(
                         '${review.date.day}/${review.date.month}/${review.date.year}',
                         style: TextStyle(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 153),
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
                           fontSize: 12,
                         ),
                       ),

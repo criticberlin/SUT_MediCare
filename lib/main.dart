@@ -7,6 +7,7 @@ import 'firebase_options.dart'; // ✅ Added
 import 'utils/theme/app_theme.dart';
 import 'utils/theme/theme_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/doctor_provider.dart';
 import 'routes.dart';
 import 'models/user.dart' as app_user;
 
@@ -70,6 +71,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => DoctorProvider()),
       ],
       child: const MyApp(),
     ),
@@ -85,6 +87,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => DoctorProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {

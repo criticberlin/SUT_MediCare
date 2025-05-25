@@ -1,177 +1,176 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../utils/theme/app_theme.dart';
-import '../utils/theme/theme_provider.dart';
+import '../models/doctor.dart';
+import '../routes.dart';
 
 class DoctorCard extends StatelessWidget {
-  final String name;
-  final String specialty;
-  final String imageUrl;
-  final double rating;
-  final int experience;
-  final VoidCallback onTap;
-  final bool isFeatured;
+  final Doctor doctor;
+  final bool showDetails;
 
   const DoctorCard({
     super.key,
-    required this.name,
-    required this.specialty,
-    required this.imageUrl,
-    required this.rating,
-    required this.experience,
-    required this.onTap,
-    this.isFeatured = false,
+    required this.doctor,
+    this.showDetails = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDarkMode = themeProvider.isDarkMode;
+    final theme = Theme.of(context);
     
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: isFeatured ? 220 : double.infinity,
+    return Card(
         margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: isDarkMode ? Colors.black.withValues(alpha: 0.2) : AppTheme.shadowColor,
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Column(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 4,
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            AppRoutes.doctorDetail,
+            arguments: doctor,
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Hero(
-                    tag: 'doctor-$name',
-                    child: CircleAvatar(
-                      radius: 36,
-                      backgroundColor: isDarkMode ? AppTheme.darkCardColor.withValues(alpha: 0.7) : AppTheme.lightBlueBackground,
-                      backgroundImage: NetworkImage(imageUrl),
-                      onBackgroundImageError: (_, __) {},
-                      child: imageUrl.isEmpty
-                          ? Icon(
+              // Doctor Image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: doctor.imageUrl.startsWith('http')
+                  ? Image.network(
+                      doctor.imageUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          child: Icon(
                               Icons.person,
-                              size: 36,
-                              color: AppTheme.primaryColor,
+                            size: 40,
+                            color: theme.colorScheme.primary,
+                          ),
+                        );
+                      },
                             )
-                          : null,
+                  : Image.asset(
+                      doctor.imageUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                            color: theme.colorScheme.primary,
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 16),
+              const SizedBox(width: 12),
+              // Doctor Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          'Dr. $name',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
-                          ),
+                        Expanded(
+                          child: Text(
+                            doctor.name,
+                            style: theme.textTheme.titleMedium,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          specialty,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
-                          ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: AppTheme.ratingColor,
-                              size: 16,
+                        if (doctor.isOnline)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                          ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              rating.toString(),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: isDarkMode ? AppTheme.darkTextPrimaryColor : AppTheme.textPrimaryColor,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Row(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.work_outline,
-                                  color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
-                                  size: 14,
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                                 const SizedBox(width: 4),
-                                Text(
-                                  '$experience yrs',
+                                const Text(
+                                  'Online',
                                   style: TextStyle(
-                                    fontSize: 13,
-                                    color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
+                                    color: Colors.green,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      doctor.specialty,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
-            ),
-            if (isFeatured) ...[
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: isDarkMode ? Colors.grey.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.1),
-              ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
+                    ),
+                    if (showDetails) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        doctor.hospital,
+                        style: theme.textTheme.bodyMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                      const SizedBox(height: 8),
+                      Row(
                   children: [
                     Icon(
-                      Icons.calendar_today_outlined,
+                            Icons.star,
+                            color: Colors.amber,
                       size: 16,
-                      color: AppTheme.primaryColor,
                     ),
-                    const SizedBox(width: 8),
+                          const SizedBox(width: 4),
                     Text(
-                      'Book Appointment',
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                            doctor.rating.toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.medical_services_outlined,
+                            color: theme.colorScheme.primary,
+                            size: 16,
                       ),
+                          const SizedBox(width: 4),
+                          Text('${doctor.experience} years'),
+                        ],
                     ),
+                    ],
                   ],
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );

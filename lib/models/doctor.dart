@@ -75,6 +75,26 @@ class Doctor {
     );
   }
 
+  // Create Doctor object from Firebase user data
+  factory Doctor.fromFirebase(String docId, Map<dynamic, dynamic> userData) {
+    return Doctor(
+      id: docId,
+      name: "Dr. ${userData['name'] ?? ''}",
+      specialty: userData['specialization'] ?? 'General Physician',
+      imageUrl: userData['profileImage'] ?? 'assets/images/doctor_placeholder.png',
+      rating: (userData['rating'] ?? 4.0).toDouble(),
+      experience: userData['yearsOfExperience'] != null ? int.parse(userData['yearsOfExperience'].toString()) : 0,
+      hospital: userData['hospital'] ?? 'Not specified',
+      patients: userData['patientCount'] != null ? int.parse(userData['patientCount'].toString()) : 0,
+      about: userData['about'] ?? 'No information available.',
+      address: userData['address'] ?? 'Not specified',
+      workingHours: List<String>.from(userData['workingHours'] ?? ['Monday-Friday: 9:00 AM - 5:00 PM']),
+      services: List<String>.from(userData['services'] ?? ['General Consultation']),
+      reviews: [],
+      isOnline: userData['isOnline'] ?? false,
+    );
+  }
+
   // Get all doctors from Firebase
   static Future<List<Doctor>> getAllDoctors() async {
     final database = FirebaseDatabase.instance;

@@ -45,25 +45,52 @@ class AuthProvider with ChangeNotifier {
         }
 
         try {
-          // Only fetch user data if we have a valid Firebase user
-          final database = FirebaseDatabase.instance;
-          final userSnapshot = await database.ref('users/${firebaseUser.uid}').get();
-          
-          if (userSnapshot.exists) {
-            final userData = userSnapshot.value as Map<dynamic, dynamic>;
-            _user = app_user.User.fromMap({
-              'id': firebaseUser.uid,
-              ...userData,
-            });
-            _isAuthenticated = true;
-            _error = null;
-          } else {
-            _user = null;
-            _isAuthenticated = false;
-            _error = 'User data not found in database';
+          // Limit retries on fetching user data
+          int retries = 0;
+          const maxRetries = 3;
+          bool success = false;
+
+          while (retries < maxRetries && !success) {
+            try {
+              // Only fetch user data if we have a valid Firebase user
+              final database = FirebaseDatabase.instance;
+              final userSnapshot = await database.ref('users/${firebaseUser.uid}').get();
+              
+              if (userSnapshot.exists) {
+                final userData = userSnapshot.value as Map<dynamic, dynamic>;
+                _user = app_user.User.fromMap({
+                  'id': firebaseUser.uid,
+                  ...userData,
+                });
+                _isAuthenticated = true;
+                _error = null;
+                success = true;
+              } else {
+                // Handle case where user auth exists but not in database yet
+                // This can happen during registration before DB write completes
+                await Future.delayed(Duration(seconds: 1));
+                retries++;
+                
+                if (retries >= maxRetries) {
+                  _user = null;
+                  _isAuthenticated = false;
+                  _error = 'User data not found in database';
+                }
+              }
+            } catch (e) {
+              print('Error fetching user data (attempt ${retries+1}): $e');
+              retries++;
+              await Future.delayed(Duration(seconds: 1));
+              
+              if (retries >= maxRetries) {
+                _user = null;
+                _isAuthenticated = false;
+                _error = e.toString();
+              }
+            }
           }
         } catch (e) {
-          print('Error fetching user data: $e');
+          print('Error in auth state handler: $e');
           _user = null;
           _isAuthenticated = false;
           _error = e.toString();
@@ -89,16 +116,17 @@ class AuthProvider with ChangeNotifier {
       print('Starting sign in process...');
       await _authService.signInWithEmailAndPassword(email, password);
       // The auth state listener will handle the database check and user data loading
+      _isLoading = false;
+      notifyListeners();
       return true;
     } catch (e) {
       print('Error during sign in: $e');
       _error = e.toString();
       _user = null;
       _isAuthenticated = false;
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return false;
     }
   }
 
@@ -109,18 +137,36 @@ class AuthProvider with ChangeNotifier {
 
     try {
       print('Starting registration process...');
-      await _authService.registerWithEmailAndPassword(email, password, name, role);
+      final userCredential = await _authService.registerWithEmailAndPassword(email, password, name, role);
+      
+      // Make sure user data is properly written to database before proceeding
+      if (userCredential != null && userCredential.user != null) {
+        // Wait for database write to complete
+        final userId = userCredential.user!.uid;
+        await Future.delayed(Duration(milliseconds: 500));
+        
+        // Verify user data was written
+        final database = FirebaseDatabase.instance;
+        final userSnapshot = await database.ref('users/$userId').get();
+        
+        if (!userSnapshot.exists) {
+          // If data doesn't exist, it might still be writing - wait a bit more
+          await Future.delayed(Duration(seconds: 1));
+        }
+      }
+      
       print('Registration completed successfully');
+      _isLoading = false;
+      notifyListeners();
       return true;
     } catch (e) {
       print('Error during registration: $e');
       _error = e.toString();
       _user = null;
       _isAuthenticated = false;
-      return false;
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return false;
     }
   }
 

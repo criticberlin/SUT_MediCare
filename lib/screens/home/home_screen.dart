@@ -11,6 +11,8 @@ import '../../widgets/appointment_card.dart';
 import '../../utils/extensions.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_database/firebase_database.dart';
+import '../../providers/doctor_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,8 +23,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  app_user.User? _currentUser;
-  List<Doctor> _doctors = [];
   List<app_models.Appointment> _appointments = [];
   bool _isLoading = true;
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
@@ -40,22 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // Load current user
-      final user = await app_user.User.getCurrentUser();
-      if (user != null) {
-        setState(() {
-          _currentUser = user;
-        });
-      }
-
       // Load doctors
-      final doctors = await Doctor.getAllDoctors();
-      setState(() {
-        _doctors = doctors;
-      });
+      Provider.of<DoctorProvider>(context, listen: false).fetchDoctors();
 
-      // Load appointments
-      if (_currentUser != null) {
+      // Ensure AuthProvider is initialized
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Load appointments if user is authenticated
+      if (authProvider.isAuthenticated && authProvider.user != null) {
         final appointmentsStream = app_models.Appointment.getUserAppointments();
         appointmentsStream.listen((appointments) {
           setState(() {
@@ -217,8 +209,8 @@ class _HomeScreenState extends State<HomeScreen> {
               boxShadow: [
                 BoxShadow(
                   color: isDarkMode 
-                      ? Colors.black.withValues(alpha: 0.2) 
-                      : Colors.grey.withValues(alpha: 0.1),
+                      ? Colors.black.withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.1),
                   spreadRadius: 1,
                   blurRadius: 2,
                   offset: const Offset(0, 1),
@@ -270,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'Search',
             style: TextStyle(
-              color: (isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor).withValues(alpha: 0.7),
+              color: (isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor).withOpacity(0.7),
               fontSize: 16,
             ),
           ),
@@ -318,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: isDarkMode 
                   ? AppTheme.darkCardColor 
-                  : AppTheme.accentColor.withValues(alpha: 0.1),
+                  : AppTheme.accentColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
@@ -399,13 +391,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Doctor _getDoctorFromAppointment(app_models.Appointment appointment) {
-    return _doctors.firstWhere(
-      (doctor) => doctor.id == appointment.doctorId,
-      orElse: () => _doctors.first,
-    );
-  }
-
   Widget _buildCategorySection() {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
@@ -470,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: isDarkMode 
-                              ? Colors.black.withValues(alpha: 0.2) 
+                              ? Colors.black.withOpacity(0.2) 
                               : AppTheme.shadowColor,
                           blurRadius: 8,
                           offset: const Offset(0, 2),
@@ -505,6 +490,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTopDoctorsSection() {
+    return Consumer<DoctorProvider>(
+      builder: (context, doctorProvider, child) {
+        final doctors = doctorProvider.doctors;
+        
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -526,39 +515,47 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 16),
+            if (doctorProvider.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (doctors.isEmpty)
+              Center(
+                child: Text(
+                  'No doctors found',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              )
+            else
         SizedBox(
           height: 220,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: _doctors.length.clamp(0, 4),
+                  itemCount: doctors.length.clamp(0, 4),
             itemBuilder: (context, index) {
-              final doctor = _doctors[index];
+                    final doctor = doctors[index];
               return Padding(
                 padding: const EdgeInsets.only(right: 16),
+                      child: Container(
+                        width: 200,
                 child: DoctorCard(
-                  name: doctor.name,
-                  specialty: doctor.specialty,
-                  imageUrl: doctor.imageUrl,
-                  rating: doctor.rating,
-                  experience: doctor.experience,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.doctorDetail,
-                      arguments: doctor,
-                    );
-                  },
-                  isFeatured: true,
+                          doctor: doctor,
+                          showDetails: false,
+                        ),
                 ),
               );
             },
           ),
         ),
       ],
+        );
+      }
     );
   }
 
   Widget _buildDoctorsTab() {
+    return Consumer<DoctorProvider>(
+      builder: (context, doctorProvider, child) {
+        final doctors = doctorProvider.doctors;
+        
     return SafeArea(
       child: SingleChildScrollView(
         child: Padding(
@@ -578,30 +575,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
+                      if (doctorProvider.isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (doctors.isEmpty)
+                        Center(
+                          child: Text(
+                            'No doctors found',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        )
+                      else
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _doctors.length,
+                          itemCount: doctors.length,
                     itemBuilder: (context, index) {
-                      final doctor = _doctors[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: DoctorCard(
-                          name: doctor.name,
-                          specialty: doctor.specialty,
-                          imageUrl: doctor.imageUrl,
-                          rating: doctor.rating,
-                          experience: doctor.experience,
-                          onTap: () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.doctorDetail,
-                              arguments: doctor,
-                            );
-                          },
-                          isFeatured: false,
-                        ),
-                      );
+                            final doctor = doctors[index];
+                            return DoctorCard(doctor: doctor);
                     },
                   ),
                 ],
@@ -610,6 +600,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+        );
+      }
     );
   }
 
@@ -660,14 +652,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           gradient: LinearGradient(
                             colors: [
                               theme.colorScheme.primary,
-                              theme.colorScheme.primary.withValues(alpha: 0.8),
+                              theme.colorScheme.primary.withOpacity(0.8),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                              color: theme.colorScheme.primary.withOpacity(0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                               spreadRadius: 0,
@@ -678,7 +670,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         indicatorPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
                         dividerColor: Colors.transparent,
                         labelColor: Colors.white,
-                        unselectedLabelColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
                         labelStyle: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -759,11 +751,11 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: _getStatusColor(status).withValues(alpha: 0.1),
+                color: _getStatusColor(status).withOpacity(0.1),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: _getStatusColor(status).withValues(alpha: 0.2),
+                    color: _getStatusColor(status).withOpacity(0.2),
                     blurRadius: 15,
                     spreadRadius: 0,
                     offset: const Offset(0, 5),
@@ -789,7 +781,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _getEmptyStatusMessage(status),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
                 fontSize: 14,
               ),
             ),
@@ -875,36 +867,29 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeader(),
               const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF7F8F9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(
-                      Icons.search,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Search for conversations...',
-                      style: TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 16,
+              Consumer<DoctorProvider>(
+                builder: (context, doctorProvider, child) {
+                  final doctors = doctorProvider.doctors;
+                  
+                  if (doctorProvider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (doctors.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No doctors available for chat',
+                        style: Theme.of(context).textTheme.bodyLarge,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              ListView.builder(
+                    );
+                  }
+                  
+                  return ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _doctors.length,
+                    itemCount: doctors.length,
                 itemBuilder: (context, index) {
-                  final doctor = _doctors[index];
+                      final doctor = doctors[index];
                   final lastMessage = 'Hello, how can I help you today?';
                   final timeStamp = '10:30 AM';
                   
@@ -912,6 +897,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: CircleAvatar(
                       radius: 25,
                       backgroundImage: NetworkImage(doctor.imageUrl),
+                          onBackgroundImageError: (_, __) => const Icon(Icons.person),
                     ),
                     title: Text(
                       doctor.name,
@@ -940,6 +926,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   );
                 },
+                  );
+                }
               ),
             ],
           ),
@@ -949,6 +937,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildProfileTab() {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUser = authProvider.user;
+    
     return SafeArea(
       child: SingleChildScrollView(
         child: Padding(
@@ -957,75 +948,112 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 16),
-              CircleAvatar(
-                radius: 60,
-                backgroundImage: _currentUser?.profileImage != null
-                    ? NetworkImage(_currentUser!.profileImage!)
-                    : const AssetImage('assets/images/default_profile.png') as ImageProvider,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _currentUser!.name,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _currentUser!.email,
-                style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
+              if (currentUser == null) 
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.account_circle_outlined,
+                        size: 64,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Please sign in to view your profile',
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(context, AppRoutes.login);
+                        },
+                        child: const Text('Sign In'),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                CircleAvatar(
+                  radius: 60,
+                  backgroundImage: currentUser.profileImage != null
+                      ? NetworkImage(currentUser.profileImage!)
+                      : const AssetImage('assets/images/default_profile.png') as ImageProvider,
                 ),
-              ),
-              const SizedBox(height: 24),
-              _buildProfileMenuItem(
-                icon: Icons.person_outline,
-                title: 'Edit Profile',
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.editProfile);
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.history,
-                title: 'Medical History',
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.medicalHistory);
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.notifications_none,
-                title: 'Notifications',
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.notifications);
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.payment,
-                title: 'Payment Methods',
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.paymentMethods);
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.settings_outlined,
-                title: 'Settings',
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.settings);
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.help_outline,
-                title: 'Help & Support',
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.helpSupport);
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.exit_to_app,
-                title: 'Logout',
-                onTap: () {
-                  _showLogoutConfirmation(context);
-                },
-                isLast: true,
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  currentUser.name,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  currentUser.email,
+                  style: TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildProfileMenuItem(
+                  icon: Icons.person_outline,
+                  title: 'Edit Profile',
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.editProfile,
+                      arguments: currentUser,
+                    );
+                  },
+                ),
+                _buildProfileMenuItem(
+                  icon: Icons.history,
+                  title: 'Medical History',
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.medicalHistory);
+                  },
+                ),
+                _buildProfileMenuItem(
+                  icon: Icons.notifications_none,
+                  title: 'Notifications',
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.notifications);
+                  },
+                ),
+                _buildProfileMenuItem(
+                  icon: Icons.payment,
+                  title: 'Payment Methods',
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.paymentMethods);
+                  },
+                ),
+                _buildProfileMenuItem(
+                  icon: Icons.settings_outlined,
+                  title: 'Settings',
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.settings);
+                  },
+                ),
+                _buildProfileMenuItem(
+                  icon: Icons.help_outline,
+                  title: 'Help & Support',
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.helpSupport);
+                  },
+                ),
+                _buildProfileMenuItem(
+                  icon: Icons.exit_to_app,
+                  title: 'Logout',
+                  onTap: () {
+                    _showLogoutConfirmation(context);
+                  },
+                  isLast: true,
+                ),
+              ],
             ],
           ),
         ),
@@ -1066,7 +1094,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      color: AppTheme.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -1134,12 +1162,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               onPressed: () {
                 // Perform logout actions
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.pushNamedAndRemoveUntil(
-                  context, 
-                  AppRoutes.login,
-                  (route) => false,
-                );
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                authProvider.signOut().then((_) {
+                  Navigator.of(context).pop(); // Close dialog
+                  Navigator.pushNamedAndRemoveUntil(
+                    context, 
+                    AppRoutes.login,
+                    (route) => false,
+                  );
+                });
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
@@ -1153,6 +1184,29 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
+    );
+  }
+
+  Doctor _getDoctorFromAppointment(app_models.Appointment appointment) {
+    final doctorProvider = Provider.of<DoctorProvider>(context, listen: false);
+    final doctors = doctorProvider.doctors;
+    return doctors.firstWhere(
+      (doctor) => doctor.id == appointment.doctorId,
+      orElse: () => doctors.isNotEmpty ? doctors.first : Doctor(
+        id: 'unknown',
+        name: 'Unknown Doctor',
+        specialty: 'Unknown',
+        imageUrl: '',
+        rating: 0.0,
+        experience: 0,
+        hospital: 'Unknown',
+        patients: 0,
+        about: '',
+        address: '',
+        workingHours: [],
+        services: [],
+        reviews: [],
+      ),
     );
   }
 } 
