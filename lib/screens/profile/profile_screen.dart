@@ -1,337 +1,705 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/user.dart' as app_user;
-import '../../utils/theme/app_theme.dart';
+import '../../models/user.dart';
 import '../../utils/theme/theme_provider.dart';
-import '../../widgets/custom_button.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import '../../utils/theme/app_theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../routes.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  app_user.User? _user;
-  bool _isLoading = false;
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
-  final ImagePicker _picker = ImagePicker();
-  File? _profileImage;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadUserData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final user = await app_user.User.getCurrentUser();
-      if (user != null) {
-        setState(() {
-          _user = user;
-          _nameController.text = user.name;
-          _emailController.text = user.email;
-          _phoneController.text = user.phone ?? '';
-          _addressController.text = user.address ?? '';
-        });
-      }
-    } catch (e) {
-      print('Error loading user data: $e');
-      // Handle error appropriately
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _profileImage = File(image.path);
-        });
-        // TODO: Upload image to Firebase Storage and update user profile
-      }
-    } catch (e) {
-      print('Error picking image: $e');
-      // Handle error appropriately
-    }
-  }
-
-  Future<void> _updateProfile() async {
-    if (!_formKey.currentState!.validate() || _user == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Update user data in Firebase
-      await _database.ref('users/${_user!.id}').update({
-        'name': _nameController.text,
-        'phone': _phoneController.text,
-        'address': _addressController.text,
-      });
-
-      // Update email in Firebase Auth if changed
-      if (_emailController.text != _user!.email) {
-        await _auth.currentUser?.updateEmail(_emailController.text);
-      }
-
-      // Update local user object
-      setState(() {
-        _user = _user!.copyWith(
-          name: _nameController.text,
-          email: _emailController.text,
-          phone: _phoneController.text,
-          address: _addressController.text,
-        );
-      });
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Profile updated successfully'),
-            ],
-          ),
-          backgroundColor: AppTheme.successColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(8),
-        ),
-      );
-    } catch (e) {
-      print('Error updating profile: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Failed to update profile'),
-            ],
-          ),
-          backgroundColor: AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(8),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _signOut() async {
-    try {
-      await _auth.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(AppRoutes.login);
-    } catch (e) {
-      print('Error signing out: $e');
-      // Handle error appropriately
-    }
-  }
-
-  void _navigateToProfileForm() {
-    if (_user == null) return;
-
-    if (_user!.role == 'doctor') {
-      Navigator.of(context).pushNamed(
-        AppRoutes.doctorProfileForm,
-        arguments: _user,
-      );
-    } else {
-      Navigator.of(context).pushNamed(
-        AppRoutes.patientProfileForm,
-        arguments: _user,
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
-    
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
+    final user = authProvider.user;
 
-    if (_user == null) {
-      return const Center(
-        child: Text('Failed to load user data'),
+    if (user == null) {
+      return Scaffold(
+        backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : Colors.grey[50],
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.account_circle_outlined,
+                size: 80,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Please sign in to view your profile',
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, AppRoutes.login);
+                },
+                child: const Text('Sign In'),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
+      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : Colors.grey[50],
+      body: CustomScrollView(
+        slivers: [
+          _buildSliverAppBar(context, user),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                _buildProfileStats(context, user),
+                const SizedBox(height: 20),
+                _buildProfileMenu(context),
+              ],
+            ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    );
+  }
+
+  Widget _buildSliverAppBar(BuildContext context, User user) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    
+    return SliverAppBar(
+      expandedHeight: 240.0,
+      floating: false,
+      pinned: true,
+      backgroundColor: isDarkMode ? AppTheme.darkBackgroundColor : Colors.white,
+      elevation: 0,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Stack(
           children: [
-            GestureDetector(
-              onTap: _pickImage,
-              child: Stack(
+            // Background gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isDarkMode
+                      ? [
+                          AppTheme.primaryColor.withOpacity(0.8),
+                          AppTheme.darkBackgroundColor,
+                        ]
+                      : [
+                          AppTheme.primaryColor.withOpacity(0.8),
+                          AppTheme.primaryColor.withOpacity(0.4),
+                        ],
+                ),
+              ),
+            ),
+            // Profile content
+            Padding(
+              padding: EdgeInsets.only(
+                top: statusBarHeight + 30,
+                left: 20,
+                right: 20,
+              ),
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                    backgroundImage: _profileImage != null
-                        ? FileImage(_profileImage!)
-                        : (_user!.profileImage != null
-                            ? NetworkImage(_user!.profileImage!)
-                            : null) as ImageProvider?,
-                    child: _profileImage == null && _user!.profileImage == null
-                        ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                        : null,
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        shape: BoxShape.circle,
+                  // Profile image
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 4,
                       ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(50),
+                          child: user.profileImage != null && user.profileImage!.isNotEmpty
+                              ? Image.network(
+                                  user.profileImage!,
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return CircleAvatar(
+                                      radius: 50,
+                                      backgroundColor: Colors.grey[200],
+                                      child: Icon(
+                                        Icons.person,
+                                        size: 50,
+                                        color: Colors.grey[400],
+                                      ),
+                                    );
+                                  },
+                                )
+                              : CircleAvatar(
+                                  radius: 50,
+                                  backgroundColor: Colors.grey[200],
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: GestureDetector(
+                            onTap: () {
+                              // TODO: Implement image picking functionality
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 5,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  // User name
+                  Text(
+                    user.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 10.0,
+                          color: Colors.black26,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // User email
+                  Text(
+                    user.email,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 10.0,
+                          color: Colors.black26,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Add role-specific info
+                  if (user.role == 'Doctor') ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      user.specialization ?? 'Medical Professional',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    if (user.isVerified == true) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified, color: Colors.white, size: 12),
+                            SizedBox(width: 4),
+                            Text(
+                              'Verified',
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]
+                  ] else if (user.role == 'Patient') ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Patient',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    if (user.bloodType != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Blood Type: ${user.bloodType}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              _user!.name,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _user!.email,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _user!.role.toUpperCase(),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (_user!.role == 'doctor') ...[
-              ListTile(
-                leading: const Icon(Icons.dashboard),
-                title: const Text('Dashboard'),
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorDashboard),
-              ),
-              ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: const Text('Appointments'),
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorAppointments),
-              ),
-              ListTile(
-                leading: const Icon(Icons.people),
-                title: const Text('Patients'),
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorPatients),
-              ),
-              ListTile(
-                leading: const Icon(Icons.schedule),
-                title: const Text('Schedule'),
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorSchedule),
-              ),
-              ListTile(
-                leading: const Icon(Icons.attach_money),
-                title: const Text('Earnings'),
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.doctorEarnings),
-              ),
-            ] else ...[
-              ListTile(
-                leading: const Icon(Icons.history),
-                title: const Text('Appointment History'),
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.appointmentHistory),
-              ),
-              ListTile(
-                leading: const Icon(Icons.medical_services),
-                title: const Text('Medical History'),
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.medicalHistory),
-              ),
-            ],
-            const SizedBox(height: 24),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Edit Profile'),
-              onTap: _navigateToProfileForm,
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.settings),
-            ),
-            ListTile(
-              leading: const Icon(Icons.help),
-              title: const Text('Help & Support'),
-              onTap: () => Navigator.of(context).pushNamed(AppRoutes.helpSupport),
-            ),
           ],
         ),
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(
+            Icons.settings_outlined,
+            color: isDarkMode ? Colors.white : Colors.white,
+          ),
+          onPressed: () {
+            Navigator.pushNamed(context, AppRoutes.settings);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileStats(BuildContext context, User user) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
+    // Define stats based on user role
+    List<Map<String, dynamic>> stats = [];
+    
+    if (user.role == 'Doctor') {
+      stats = [
+        {
+          'icon': Icons.person,
+          'value': user.yearsOfExperience?.toString() ?? '0',
+          'label': 'Years Exp.',
+        },
+        {
+          'icon': Icons.star,
+          'value': user.rating?.toString() ?? '0.0',
+          'label': 'Rating',
+        },
+        {
+          'icon': Icons.people,
+          'value': user.totalReviews?.toString() ?? '0',
+          'label': 'Reviews',
+        },
+        {
+          'icon': Icons.local_hospital,
+          'value': user.isVerified == true ? 'Yes' : 'No',
+          'label': 'Verified',
+        },
+      ];
+    } else {
+      // Patient stats
+      stats = [
+        {
+          'icon': Icons.calendar_today,
+          'value': '12', // TODO: Fetch from appointments
+          'label': 'Appointments',
+        },
+        {
+          'icon': Icons.medical_services,
+          'value': user.medications?.length.toString() ?? '0',
+          'label': 'Medications',
+        },
+        {
+          'icon': Icons.warning_amber,
+          'value': user.allergies?.length.toString() ?? '0',
+          'label': 'Allergies',
+        },
+        {
+          'icon': Icons.favorite,
+          'value': user.bloodType ?? 'N/A',
+          'label': 'Blood Type',
+        },
+      ];
+    }
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode ? Colors.black12 : Colors.grey.shade100,
+            blurRadius: 10,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: stats.map((stat) {
+          return _buildStatItem(
+            context,
+            icon: stat['icon'] as IconData,
+            value: stat['value'] as String,
+            label: stat['label'] as String,
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    BuildContext context, {
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
+    return Column(
+      children: [
+        Container(
+          width: 45,
+          height: 45,
+          decoration: BoxDecoration(
+            color: isDarkMode
+                ? AppTheme.primaryColor.withOpacity(0.15)
+                : AppTheme.primaryColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: AppTheme.primaryColor,
+            size: 20,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileMenu(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
+    
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+    
+    // Common options for all users
+    final List<Map<String, dynamic>> options = [
+      {
+        'icon': Icons.person_outline,
+        'title': 'Personal Information',
+        'subtitle': 'View and update your details',
+        'route': AppRoutes.editProfile,
+      },
+      {
+        'icon': Icons.notifications_outlined,
+        'title': 'Notifications',
+        'subtitle': 'Manage your notifications',
+        'route': AppRoutes.notifications,
+      },
+      {
+        'icon': Icons.security_outlined,
+        'title': 'Privacy & Security',
+        'subtitle': 'Manage your account security',
+        'route': AppRoutes.settings,
+      },
+      {
+        'icon': Icons.help_outline,
+        'title': 'Help & Support',
+        'subtitle': 'Get help and contact support',
+        'route': AppRoutes.helpSupport,
+      },
+    ];
+    
+    // Add role-specific options
+    if (user.role == 'Patient') {
+      // Insert at index 1 for patient-specific options
+      options.insert(1, {
+        'icon': Icons.medical_services_outlined,
+        'title': 'Medical History',
+        'subtitle': 'View your medical records',
+        'route': AppRoutes.medicalHistory,
+      });
+      
+      options.insert(2, {
+        'icon': Icons.payment_outlined,
+        'title': 'Payment Methods',
+        'subtitle': 'Manage your payment options',
+        'route': AppRoutes.paymentMethods,
+      });
+    } else if (user.role == 'Doctor') {
+      // Insert at index 1 for doctor-specific options
+      options.insert(1, {
+        'icon': Icons.dashboard_outlined,
+        'title': 'Doctor Dashboard',
+        'subtitle': 'View your practice overview',
+        'route': AppRoutes.doctorDashboard,
+      });
+      
+      options.insert(2, {
+        'icon': Icons.people_outline,
+        'title': 'My Patients',
+        'subtitle': 'View and manage your patients',
+        'route': AppRoutes.doctorPatients,
+      });
+      
+      options.insert(3, {
+        'icon': Icons.calendar_today_outlined,
+        'title': 'My Schedule',
+        'subtitle': 'Manage your availability',
+        'route': AppRoutes.doctorSchedule,
+      });
+    }
+    
+    // Add logout option at the end
+    options.add({
+      'icon': Icons.logout,
+      'title': 'Logout',
+      'subtitle': 'Sign out from your account',
+      'route': null,
+    });
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(context, 'Account Settings'),
+          const SizedBox(height: 16),
+          ...options.map((option) => _buildMenuOption(
+                context,
+                icon: option['icon'] as IconData,
+                title: option['title'] as String,
+                subtitle: option['subtitle'] as String,
+                route: option['route'] as String?,
+                isLogout: option['title'] == 'Logout',
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: isDarkMode ? Colors.white : AppTheme.textPrimaryColor,
+      ),
+    );
+  }
+
+  Widget _buildMenuOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String? route,
+    bool isLogout = false,
+  }) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          if (isLogout) {
+            _showLogoutDialog(context);
+          } else if (route != null) {
+            Navigator.pushNamed(context, route, arguments: authProvider.user);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 45,
+                height: 45,
+                decoration: BoxDecoration(
+                  color: isLogout
+                      ? Colors.red.withOpacity(0.1)
+                      : isDarkMode
+                          ? AppTheme.primaryColor.withOpacity(0.15)
+                          : AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: isLogout ? Colors.red : AppTheme.primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isLogout
+                            ? Colors.red
+                            : isDarkMode
+                                ? Colors.white
+                                : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isDarkMode = themeProvider.isDarkMode;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDarkMode ? AppTheme.darkCardColor : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Logout',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black87,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(
+            color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              await authProvider.signOut();
+              // Navigate to login screen
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.login,
+                (route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
       ),
     );
   }

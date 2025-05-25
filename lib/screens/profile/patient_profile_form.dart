@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../models/user.dart' as app_user;
 import '../../providers/auth_provider.dart';
 import '../../utils/theme/app_theme.dart';
@@ -8,58 +9,44 @@ import '../../routes.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
-class DoctorProfileForm extends StatefulWidget {
+class PatientProfileForm extends StatefulWidget {
   // Can be either a User object or registration data map
   final dynamic userData;
   
-  const DoctorProfileForm({
+  const PatientProfileForm({
     Key? key,
     required this.userData,
   }) : super(key: key);
 
   @override
-  _DoctorProfileFormState createState() => _DoctorProfileFormState();
+  _PatientProfileFormState createState() => _PatientProfileFormState();
 }
 
-class _DoctorProfileFormState extends State<DoctorProfileForm> {
+class _PatientProfileFormState extends State<PatientProfileForm> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _specializationController = TextEditingController();
-  final _qualificationsController = TextEditingController();
-  final _licenseNumberController = TextEditingController();
-  final _hospitalController = TextEditingController();
   final _addressController = TextEditingController();
-  final _experienceController = TextEditingController();
-  final _consultationFeeController = TextEditingController();
-  final _aboutController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _weightController = TextEditingController();
   
   // Track if this is a new user registration or profile update
   bool _isNewRegistration = false;
   late Map<String, dynamic> _registrationData;
   app_user.User? _existingUser;
   
-  List<String> _languages = [];
-  final _newLanguageController = TextEditingController();
+  DateTime? _dateOfBirth;
+  String? _gender;
+  String? _bloodType;
   
-  List<String> _services = [];
-  final _newServiceController = TextEditingController();
-  
-  List<String> _acceptedInsurance = [];
-  final _newInsuranceController = TextEditingController();
-  
-  Map<String, bool> _workingDays = {
-    'Monday': false,
-    'Tuesday': false,
-    'Wednesday': false,
-    'Thursday': false,
-    'Friday': false,
-    'Saturday': false,
-    'Sunday': false,
-  };
-  
-  String _startTime = '09:00';
-  String _endTime = '17:00';
+  List<String> _allergies = [];
+  final _newAllergyController = TextEditingController();
+
+  List<String> _medications = [];
+  final _newMedicationController = TextEditingController();
+
+  List<String> _chronicConditions = [];
+  final _newConditionController = TextEditingController();
   
   bool _isLoading = false;
   
@@ -84,48 +71,27 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
     
     _nameController.text = _existingUser!.name;
     _phoneController.text = _existingUser!.phone ?? '';
-    _specializationController.text = _existingUser!.specialization ?? '';
-    _qualificationsController.text = _existingUser!.qualifications ?? '';
-    _licenseNumberController.text = _existingUser!.licenseNumber ?? '';
-    _hospitalController.text = _existingUser!.hospital ?? '';
     _addressController.text = _existingUser!.address ?? '';
-    _experienceController.text = _existingUser!.yearsOfExperience?.toString() ?? '';
-    _consultationFeeController.text = _existingUser!.consultationFee?.toString() ?? '';
-    _languages = _existingUser!.languages ?? [];
-    _acceptedInsurance = _existingUser!.acceptedInsurance ?? [];
-    
-    // Initialize availability if exists
-    if (_existingUser!.availability != null) {
-      final availability = _existingUser!.availability!;
-      if (availability.containsKey('days')) {
-        final days = availability['days'] as Map<dynamic, dynamic>;
-        days.forEach((key, value) {
-          if (_workingDays.containsKey(key)) {
-            _workingDays[key] = value as bool;
-          }
-        });
-      }
-      
-      _startTime = availability['startTime'] as String? ?? '09:00';
-      _endTime = availability['endTime'] as String? ?? '17:00';
-    }
+    _heightController.text = _existingUser!.height?.toString() ?? '';
+    _weightController.text = _existingUser!.weight?.toString() ?? '';
+    _dateOfBirth = _existingUser!.dateOfBirth != null ? DateTime.parse(_existingUser!.dateOfBirth!) : null;
+    _gender = _existingUser!.gender;
+    _bloodType = _existingUser!.bloodType;
+    _allergies = _existingUser!.allergies ?? [];
+    _medications = _existingUser!.medications ?? [];
+    _chronicConditions = _existingUser!.chronicConditions ?? [];
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _specializationController.dispose();
-    _qualificationsController.dispose();
-    _licenseNumberController.dispose();
-    _hospitalController.dispose();
     _addressController.dispose();
-    _experienceController.dispose();
-    _consultationFeeController.dispose();
-    _aboutController.dispose();
-    _newLanguageController.dispose();
-    _newServiceController.dispose();
-    _newInsuranceController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
+    _newAllergyController.dispose();
+    _newMedicationController.dispose();
+    _newConditionController.dispose();
     super.dispose();
   }
   
@@ -158,7 +124,7 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
         
         // Prepare user data
         final database = FirebaseDatabase.instance;
-        final userRef = database.ref('users/Doctors/$userId');
+        final userRef = database.ref('users/Patients/$userId');
         final flatUserRef = database.ref('users/$userId');
         
         // Prepare user data
@@ -166,25 +132,17 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
           'id': userId,
           'name': _nameController.text,
           'email': _isNewRegistration ? _registrationData['email'] : _existingUser!.email,
-          'role': 'Doctor',
+          'role': 'Patient',
           'phone': _phoneController.text,
-          'specialization': _specializationController.text,
-          'qualifications': _qualificationsController.text,
-          'licenseNumber': _licenseNumberController.text,
-          'hospital': _hospitalController.text,
           'address': _addressController.text,
-          'yearsOfExperience': int.tryParse(_experienceController.text),
-          'consultationFee': double.tryParse(_consultationFeeController.text),
-          'about': _aboutController.text,
-          'languages': _languages,
-          'services': _services,
-          'acceptedInsurance': _acceptedInsurance,
-          'availability': {
-            'days': _workingDays,
-            'startTime': _startTime,
-            'endTime': _endTime,
-          },
-          'isVerified': false, // Set to false, admin will verify
+          'dateOfBirth': _dateOfBirth?.toIso8601String(),
+          'gender': _gender,
+          'bloodType': _bloodType,
+          'height': double.tryParse(_heightController.text),
+          'weight': double.tryParse(_weightController.text),
+          'allergies': _allergies,
+          'medications': _medications,
+          'chronicConditions': _chronicConditions,
           'isProfileComplete': true,
           'createdAt': _isNewRegistration ? ServerValue.timestamp : null,
           'updatedAt': ServerValue.timestamp,
@@ -239,6 +197,21 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
     }
   }
   
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _dateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 18)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    
+    if (picked != null && picked != _dateOfBirth) {
+      setState(() {
+        _dateOfBirth = picked;
+      });
+    }
+  }
+  
   void _addItem(TextEditingController controller, List<String> list) {
     final value = controller.text.trim();
     if (value.isNotEmpty) {
@@ -262,7 +235,7 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Complete Doctor Profile'),
+        title: const Text('Complete Your Profile'),
         elevation: 0,
       ),
       body: _isLoading
@@ -315,7 +288,7 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
                       decoration: const InputDecoration(
                         labelText: 'Address',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_on),
+                        prefixIcon: Icon(Icons.home),
                       ),
                       maxLines: 2,
                       validator: (value) {
@@ -325,70 +298,69 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Professional Information',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () => _selectDate(context),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Date of Birth',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.calendar_today),
+                        ),
+                        child: Text(
+                          _dateOfBirth == null
+                              ? 'Select Date'
+                              : DateFormat('MM/dd/yyyy').format(_dateOfBirth!),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _specializationController,
+                    DropdownButtonFormField<String>(
+                      value: _gender,
                       decoration: const InputDecoration(
-                        labelText: 'Specialization',
+                        labelText: 'Gender',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.medical_services),
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
+                      items: const [
+                        DropdownMenuItem(value: 'male', child: Text('Male')),
+                        DropdownMenuItem(value: 'female', child: Text('Female')),
+                        DropdownMenuItem(value: 'other', child: Text('Other')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _gender = value;
+                        });
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter your specialization';
+                          return 'Please select your gender';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _qualificationsController,
+                    DropdownButtonFormField<String>(
+                      value: _bloodType,
                       decoration: const InputDecoration(
-                        labelText: 'Qualifications',
+                        labelText: 'Blood Type',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.school),
-                        hintText: 'e.g., MBBS, MD, MS, DNB',
+                        prefixIcon: Icon(Icons.bloodtype),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your qualifications';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _licenseNumberController,
-                      decoration: const InputDecoration(
-                        labelText: 'License Number',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.badge),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your license number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _hospitalController,
-                      decoration: const InputDecoration(
-                        labelText: 'Hospital/Clinic',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.local_hospital),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your hospital or clinic name';
-                        }
-                        return null;
+                      items: const [
+                        DropdownMenuItem(value: 'A+', child: Text('A+')),
+                        DropdownMenuItem(value: 'A-', child: Text('A-')),
+                        DropdownMenuItem(value: 'B+', child: Text('B+')),
+                        DropdownMenuItem(value: 'B-', child: Text('B-')),
+                        DropdownMenuItem(value: 'AB+', child: Text('AB+')),
+                        DropdownMenuItem(value: 'AB-', child: Text('AB-')),
+                        DropdownMenuItem(value: 'O+', child: Text('O+')),
+                        DropdownMenuItem(value: 'O-', child: Text('O-')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _bloodType = value;
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
@@ -396,85 +368,55 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
                       children: [
                         Expanded(
                           child: TextFormField(
-                            controller: _experienceController,
+                            controller: _heightController,
                             decoration: const InputDecoration(
-                              labelText: 'Years of Experience',
+                              labelText: 'Height (cm)',
                               border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.timeline),
+                              prefixIcon: Icon(Icons.height),
                             ),
                             keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Required';
-                              }
-                              return null;
-                            },
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: TextFormField(
-                            controller: _consultationFeeController,
+                            controller: _weightController,
                             decoration: const InputDecoration(
-                              labelText: 'Consultation Fee',
+                              labelText: 'Weight (kg)',
                               border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.attach_money),
+                              prefixIcon: Icon(Icons.line_weight),
                             ),
                             keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Required';
-                              }
-                              return null;
-                            },
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _aboutController,
-                      decoration: const InputDecoration(
-                        labelText: 'About Yourself',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.info),
-                        hintText: 'Brief description of your practice and expertise',
-                      ),
-                      maxLines: 3,
-                    ),
                     const SizedBox(height: 24),
                     Text(
-                      'Languages Spoken',
+                      'Medical Information',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 16),
                     _buildListInput(
-                      'Languages',
-                      _languages,
-                      _newLanguageController,
-                      Icons.language,
+                      'Allergies',
+                      _allergies,
+                      _newAllergyController,
+                      Icons.warning_amber_rounded,
                     ),
                     const SizedBox(height: 16),
                     _buildListInput(
-                      'Services Offered',
-                      _services,
-                      _newServiceController,
-                      Icons.medical_services,
+                      'Current Medications',
+                      _medications,
+                      _newMedicationController,
+                      Icons.medication,
                     ),
                     const SizedBox(height: 16),
                     _buildListInput(
-                      'Accepted Insurance',
-                      _acceptedInsurance,
-                      _newInsuranceController,
+                      'Chronic Conditions',
+                      _chronicConditions,
+                      _newConditionController,
                       Icons.health_and_safety,
                     ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Working Hours',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildWorkingHours(),
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
@@ -508,6 +450,8 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -539,16 +483,17 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
               border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Wrap(
-              spacing: 8,
+            child: Column(
               children: items
                   .asMap()
                   .entries
                   .map(
-                    (entry) => Chip(
-                      label: Text(entry.value),
-                      deleteIcon: const Icon(Icons.cancel, size: 16),
-                      onDeleted: () => _removeItem(entry.key, items),
+                    (entry) => ListTile(
+                      title: Text(entry.value),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _removeItem(entry.key, items),
+                      ),
                     ),
                   )
                   .toList(),
@@ -557,99 +502,5 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
         ],
       ],
     );
-  }
-  
-  Widget _buildWorkingHours() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Select Working Days',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: _workingDays.entries.map((entry) {
-                  return FilterChip(
-                    label: Text(entry.key.substring(0, 3)),
-                    selected: entry.value,
-                    onSelected: (value) {
-                      setState(() {
-                        _workingDays[entry.key] = value;
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Working Hours',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _startTime,
-                      decoration: const InputDecoration(
-                        labelText: 'Start Time',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _generateTimeDropdownItems(),
-                      onChanged: (value) {
-                        setState(() {
-                          _startTime = value!;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _endTime,
-                      decoration: const InputDecoration(
-                        labelText: 'End Time',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _generateTimeDropdownItems(),
-                      onChanged: (value) {
-                        setState(() {
-                          _endTime = value!;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-  
-  List<DropdownMenuItem<String>> _generateTimeDropdownItems() {
-    List<DropdownMenuItem<String>> items = [];
-    for (int hour = 0; hour < 24; hour++) {
-      for (int minute = 0; minute < 60; minute += 30) {
-        final timeString = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-        items.add(DropdownMenuItem(
-          value: timeString,
-          child: Text(timeString),
-        ));
-      }
-    }
-    return items;
   }
 } 

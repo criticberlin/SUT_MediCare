@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/doctor.dart';
 import '../../models/message.dart';
 import '../../utils/theme/app_theme.dart';
 import '../../utils/theme/theme_provider.dart';
@@ -19,7 +18,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   List<ChatPreview> _chatPreviews = [];
   List<ChatPreview> _filteredChatPreviews = [];
   String _selectedFilter = 'All';
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   @override

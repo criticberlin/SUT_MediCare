@@ -26,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<app_models.Appointment> _appointments = [];
   bool _isLoading = true;
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
 
   @override
   void initState() {
@@ -373,13 +372,57 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAppointmentCard(app_models.Appointment appointment) {
+    // Get doctor info from appointment
+    Doctor? doctor; 
+    try {
+      final doctorProvider = Provider.of<DoctorProvider>(context, listen: false);
+      doctor = doctorProvider.doctors.firstWhere(
+        (d) => d.id == appointment.doctorId,
+        orElse: () => Doctor(
+          id: appointment.doctorId,
+          name: "Doctor",
+          specialty: "Medical Professional",
+          imageUrl: "",
+          rating: 0.0,
+          experience: 0,
+          hospital: "",
+          patients: 0,
+          about: "",
+          address: "",
+          workingHours: [],
+          services: [],
+          reviews: [],
+        ),
+      );
+    } catch (e) {
+      print('Error finding doctor: $e');
+    }
+
+    // Format the date and time from dateTime
+    final date = DateTime.parse(appointment.dateTime.toString());
+    final formattedDate = "${date.day}/${date.month}/${date.year}";
+    final formattedTime = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+    
+    // Convert string status to AppointmentStatus enum
+    app_models.AppointmentStatus statusEnum;
+    switch (appointment.status.toLowerCase()) {
+      case 'completed':
+        statusEnum = app_models.AppointmentStatus.completed;
+        break;
+      case 'cancelled':
+        statusEnum = app_models.AppointmentStatus.cancelled;
+        break;
+      default:
+        statusEnum = app_models.AppointmentStatus.upcoming;
+    }
+
     return AppointmentCard(
-      doctorName: appointment.doctorName,
-      doctorSpecialty: appointment.doctorSpecialty,
-      doctorImage: appointment.doctorImage,
-      appointmentDate: appointment.date,
-      appointmentTime: appointment.time,
-      status: appointment.status,
+      doctorName: doctor?.name ?? 'Dr. Unknown',
+      doctorSpecialty: doctor?.specialty ?? 'Medical Professional',
+      doctorImage: doctor?.imageUrl ?? '',
+      appointmentDate: date,
+      appointmentTime: formattedTime,
+      status: statusEnum,
       onTap: () {
         final doctor = _getDoctorFromAppointment(appointment);
         Navigator.pushNamed(

@@ -3,45 +3,51 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class Appointment {
   final String id;
+  final String patientId;
   final String doctorId;
-  final String doctorName;
-  final String doctorSpecialty;
-  final String doctorImage;
-  final DateTime date;
-  final String time;
-  final String duration;
-  final AppointmentStatus status;
+  final DateTime dateTime;
+  final String reason;
+  final int duration;
   final String? notes;
-  final String? prescriptionUrl;
+  final double? fee;
+  final String status;
+  final int createdAt;
+  final int updatedAt;
+  
+  // Optional loaded data
+  final Map<String, dynamic>? patientData;
+  final Map<String, dynamic>? doctorData;
 
   Appointment({
     required this.id,
+    required this.patientId,
     required this.doctorId,
-    required this.doctorName,
-    required this.doctorSpecialty,
-    required this.doctorImage,
-    required this.date,
-    required this.time,
+    required this.dateTime,
+    required this.reason,
     required this.duration,
-    required this.status,
     this.notes,
-    this.prescriptionUrl,
+    this.fee,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.patientData,
+    this.doctorData,
   });
 
-  // Convert Appointment object to Map
+  // Convert Appointment to Map
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'patientId': patientId,
       'doctorId': doctorId,
-      'doctorName': doctorName,
-      'doctorSpecialty': doctorSpecialty,
-      'doctorImage': doctorImage,
-      'date': date.toIso8601String(),
-      'time': time,
+      'dateTime': dateTime.toIso8601String(),
+      'reason': reason,
       'duration': duration,
-      'status': status.toString(),
       'notes': notes,
-      'prescriptionUrl': prescriptionUrl,
+      'fee': fee,
+      'status': status,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
     };
   }
 
@@ -49,19 +55,53 @@ class Appointment {
   factory Appointment.fromMap(Map<String, dynamic> map) {
     return Appointment(
       id: map['id'] ?? '',
+      patientId: map['patientId'] ?? '',
       doctorId: map['doctorId'] ?? '',
-      doctorName: map['doctorName'] ?? '',
-      doctorSpecialty: map['doctorSpecialty'] ?? '',
-      doctorImage: map['doctorImage'] ?? '',
-      date: DateTime.parse(map['date'] ?? DateTime.now().toIso8601String()),
-      time: map['time'] ?? '',
-      duration: map['duration'] ?? '',
-      status: AppointmentStatus.values.firstWhere(
-        (e) => e.toString() == map['status'],
-        orElse: () => AppointmentStatus.upcoming,
-      ),
+      dateTime: map['dateTime'] != null
+          ? DateTime.parse(map['dateTime'])
+          : DateTime.now(),
+      reason: map['reason'] ?? '',
+      duration: map['duration'] ?? 30,
       notes: map['notes'],
-      prescriptionUrl: map['prescriptionUrl'],
+      fee: map['fee']?.toDouble(),
+      status: map['status'] ?? 'pending',
+      createdAt: map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch,
+      updatedAt: map['updatedAt'] ?? DateTime.now().millisecondsSinceEpoch,
+      patientData: map['patientData'],
+      doctorData: map['doctorData'],
+    );
+  }
+  
+  // Create a copy of the appointment with updated values
+  Appointment copyWith({
+    String? id,
+    String? patientId,
+    String? doctorId,
+    DateTime? dateTime,
+    String? reason,
+    int? duration,
+    String? notes,
+    double? fee,
+    String? status,
+    int? createdAt,
+    int? updatedAt,
+    Map<String, dynamic>? patientData,
+    Map<String, dynamic>? doctorData,
+  }) {
+    return Appointment(
+      id: id ?? this.id,
+      patientId: patientId ?? this.patientId,
+      doctorId: doctorId ?? this.doctorId,
+      dateTime: dateTime ?? this.dateTime,
+      reason: reason ?? this.reason,
+      duration: duration ?? this.duration,
+      notes: notes ?? this.notes,
+      fee: fee ?? this.fee,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      patientData: patientData ?? this.patientData,
+      doctorData: doctorData ?? this.doctorData,
     );
   }
 
@@ -85,7 +125,7 @@ class Appointment {
         appointments.add(Appointment.fromMap(Map<String, dynamic>.from(value)));
       });
 
-      appointments.sort((a, b) => a.date.compareTo(b.date));
+      appointments.sort((a, b) => a.dateTime.compareTo(b.dateTime));
       return appointments;
     });
   }
@@ -107,7 +147,7 @@ class Appointment {
         appointments.add(Appointment.fromMap(Map<String, dynamic>.from(value)));
       });
 
-      appointments.sort((a, b) => a.date.compareTo(b.date));
+      appointments.sort((a, b) => a.dateTime.compareTo(b.dateTime));
       return appointments;
     });
   }
@@ -120,19 +160,19 @@ class Appointment {
   }
 
   // Update appointment status
-  Future<void> updateStatus(AppointmentStatus newStatus) async {
+  Future<void> updateStatus(String newStatus) async {
     final database = FirebaseDatabase.instance;
-    await database.ref('appointments/$id').update({'status': newStatus.toString()});
+    await database.ref('appointments/$id').update({'status': newStatus});
   }
 
   // Cancel appointment
   Future<void> cancel() async {
-    await updateStatus(AppointmentStatus.cancelled);
+    await updateStatus('cancelled');
   }
 
   // Complete appointment
   Future<void> complete() async {
-    await updateStatus(AppointmentStatus.completed);
+    await updateStatus('completed');
   }
 }
 

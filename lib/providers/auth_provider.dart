@@ -52,7 +52,7 @@ class AuthProvider with ChangeNotifier {
 
           while (retries < maxRetries && !success) {
             try {
-              // Only fetch user data if we have a valid Firebase user
+              // First check in the flat user collection for quick lookup
               final database = FirebaseDatabase.instance;
               final userSnapshot = await database.ref('users/${firebaseUser.uid}').get();
               
@@ -66,15 +66,40 @@ class AuthProvider with ChangeNotifier {
                 _error = null;
                 success = true;
               } else {
-                // Handle case where user auth exists but not in database yet
-                // This can happen during registration before DB write completes
-                await Future.delayed(Duration(seconds: 1));
-                retries++;
+                // If not found in flat structure, try to find in role-specific path
+                // Try both paths since we don't know the role yet
+                final patientSnapshot = await database.ref('users/Patients/${firebaseUser.uid}').get();
+                final doctorSnapshot = await database.ref('users/Doctors/${firebaseUser.uid}').get();
                 
-                if (retries >= maxRetries) {
-                  _user = null;
-                  _isAuthenticated = false;
-                  _error = 'User data not found in database';
+                if (patientSnapshot.exists) {
+                  final userData = patientSnapshot.value as Map<dynamic, dynamic>;
+                  _user = app_user.User.fromMap({
+                    'id': firebaseUser.uid,
+                    ...userData,
+                  });
+                  _isAuthenticated = true;
+                  _error = null;
+                  success = true;
+                } else if (doctorSnapshot.exists) {
+                  final userData = doctorSnapshot.value as Map<dynamic, dynamic>;
+                  _user = app_user.User.fromMap({
+                    'id': firebaseUser.uid,
+                    ...userData,
+                  });
+                  _isAuthenticated = true;
+                  _error = null;
+                  success = true;
+                } else {
+                  // Handle case where user auth exists but not in database yet
+                  // This can happen during registration before DB write completes
+                  await Future.delayed(Duration(seconds: 1));
+                  retries++;
+                  
+                  if (retries >= maxRetries) {
+                    _user = null;
+                    _isAuthenticated = false;
+                    _error = 'User data not found in database';
+                  }
                 }
               }
             } catch (e) {
@@ -177,7 +202,9 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final firebaseUser = await _authService.signInWithGoogle();
-      _user = await app_user.User.getCurrentUser();
+      
+      // The auth state listener will handle loading the user data
+      // No need to manually fetch the user here
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -262,30 +289,116 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<String> signUp({
+    required String email,
+    required String password,
+    required String name,
+    required String role,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      // Create user in Firebase Authentication using the AuthService
+      final UserCredential userCredential = await _authService.registerWithEmailAndPassword(
+        email, 
+        password,
+        name,
+        role
+      );
+      
+      // Get the user ID
+      final String uid = userCredential.user!.uid;
+      
+      // The data is already stored by registerWithEmailAndPassword in AuthService
+      // Just fetch the current user data to update the local state
+      final database = FirebaseDatabase.instance;
+      final snapshot = await database.ref('users/$uid').get();
+      
+      if (snapshot.exists) {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        _user = app_user.User.fromMap({
+          'id': uid,
+          ...Map<String, dynamic>.from(data),
+        });
+      }
+      
+      _isAuthenticated = true;
+      _error = null;
+      _isLoading = false;
+      notifyListeners();
+      
+      return uid;
+    } on FirebaseAuthException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      print('Error signing up: ${e.message}');
+      throw e.message ?? 'Error signing up';
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      print('Error signing up: $e');
+      throw 'Error signing up';
+    }
+  }
+
+  bool shouldShowProfileForm() {
+    if (_user == null) return false;
+    return _user!.isProfileComplete != true;
+  }
+  
+  String? getUserRole() {
+    return _user?.role;
+  }
+
   String getInitialRoute() {
-    if (!_isAuthenticated || _user == null) {
+    if (!isAuthenticated) {
       return AppRoutes.login;
     }
-
-    // If the user is a doctor and hasn't completed their profile
-    if (_user!.role == 'doctor' && 
-        (_user!.specialization == null || 
-         _user!.yearsOfExperience == null || 
-         _user!.qualifications == null || 
-         _user!.licenseNumber == null)) {
-      return AppRoutes.doctorProfileForm;
+    
+    if (shouldShowProfileForm()) {
+      final role = getUserRole();
+      if (role == 'Doctor') {
+        return AppRoutes.doctorProfileForm;
+      } else if (role == 'Patient') {
+        return AppRoutes.patientProfileForm;
+      }
     }
-
-    // If the user is a patient and hasn't completed their profile
-    if (_user!.role == 'patient' && 
-        (_user!.phone == null || 
-         _user!.address == null || 
-         _user!.dateOfBirth == null || 
-         _user!.gender == null)) {
-      return AppRoutes.patientProfileForm;
-    }
-
-    // If the user has completed their profile
+    
     return AppRoutes.home;
+  }
+
+  // Add a method to mark a user's profile as complete
+  Future<void> markProfileComplete() async {
+    if (_user == null) return;
+    
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      // Update the profile complete flag in both database locations
+      final database = FirebaseDatabase.instance;
+      final updates = {'isProfileComplete': true, 'updatedAt': ServerValue.timestamp};
+      
+      // Update in flat structure
+      await database.ref('users/${_user!.id}').update(updates);
+      
+      // Update in role-specific path
+      final role = _user!.role;
+      await database.ref('users/${role}s/${_user!.id}').update(updates);
+      
+      // Update local user object
+      _user = _user!.copyWith(isProfileComplete: true);
+      
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      print('Error marking profile complete: $_error');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 } 

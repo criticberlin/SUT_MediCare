@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/theme/theme_provider.dart';
 import '../utils/theme/app_theme.dart';
+import '../providers/auth_provider.dart';
+import '../routes.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -39,15 +41,28 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _controller.forward();
 
-    // Navigate to onboarding after splash animation
+    // Navigate after splash animation
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/onboarding');
+          _navigateToNextScreen();
         });
       }
     });
+  }
+
+  void _navigateToNextScreen() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    if (authProvider.isAuthenticated) {
+      // Get the initial route based on user's profile completion status
+      final nextRoute = authProvider.getInitialRoute();
+      Navigator.pushReplacementNamed(context, nextRoute, arguments: authProvider.user);
+    } else {
+      // If user is not authenticated, navigate to onboarding
+      Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+    }
   }
 
   @override
@@ -77,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      color: AppTheme.primaryColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(

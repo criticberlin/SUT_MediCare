@@ -26,7 +26,6 @@ class _ChatScreenState extends State<ChatScreen> {
   late Doctor _doctor;
   bool _isAttachmentOpen = false;
   final ScrollController _scrollController = ScrollController();
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? _chatId;
 
@@ -54,9 +53,14 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _loadChat() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return;
+    
+    // Create a chat ID combination
+    final participants = [userId, widget.doctorId];
+    participants.sort(); // Ensure consistent ordering
+    _chatId = participants.join('_');
 
     // Listen to messages using the Message model's method
-    Message.getChatMessages(widget.doctorId).listen((messages) {
+    Message.getChatMessages(_chatId!).listen((messages) {
       setState(() {
         _messages = messages;
       });
@@ -65,29 +69,30 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _markMessagesAsRead() async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return;
+    
     for (final message in _messages) {
-      if (!message.isRead && !message.isSent) {
+      if (!message.read && message.senderId != currentUserId) {
         await message.markAsRead();
       }
     }
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) {
+    if (_messageController.text.trim().isEmpty || _chatId == null) {
       return;
     }
 
-    final message = Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      senderId: _auth.currentUser?.uid ?? '',
-      receiverId: widget.doctorId,
-      content: _messageController.text.trim(),
-      timestamp: DateTime.now(),
-      isRead: false,
-      type: MessageType.text,
-    );
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return;
 
-    await message.send();
+    await Message.sendMessage(
+      chatId: _chatId!,
+      senderId: currentUserId,
+      text: _messageController.text.trim(),
+    );
+    
     _messageController.clear();
     _scrollToBottom();
   }
@@ -254,17 +259,24 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool _shouldShowAvatar(int index, List<Message> messages) {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return false;
+    
     // Show avatar if it's from doctor AND the next message is from user or this is the last message
     if (index == messages.length - 1) {
-      return !messages[index].isSent;
+      return messages[index].senderId != currentUserId;
     }
-    return !messages[index].isSent && messages[index + 1].isSent;
+    return messages[index].senderId != currentUserId && messages[index + 1].senderId == currentUserId;
   }
 
   Widget _buildMessageItem(Message message, bool showAvatar, bool isDarkMode) {
-    final isSent = message.isSent;
-
-    if (message.type == MessageType.image) {
+    final currentUserId = _auth.currentUser?.uid;
+    final isSent = message.senderId == currentUserId;
+    
+    // Check if message has an attachment (image)
+    final bool hasAttachment = message.attachment != null && message.attachment!.isNotEmpty;
+    
+    if (hasAttachment) {
       return _buildImageMessage(message, isSent, showAvatar, isDarkMode);
     }
 
@@ -323,7 +335,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
-                        _formatTime(message.timestamp),
+                        _formatTime(message.createdAt),
                         style: TextStyle(
                           color: isDarkMode 
                               ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
@@ -334,7 +346,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ],
                   Text(
-                    message.content,
+                    message.text,
                     style: TextStyle(
                       color: isSent 
                           ? Colors.white 
@@ -350,7 +362,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _formatTime(message.timestamp),
+                            _formatTime(message.createdAt),
                             style: TextStyle(
                               color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                               fontSize: 10,
@@ -358,7 +370,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           const SizedBox(width: 4),
                           Icon(
-                            message.isRead ? Icons.done_all : Icons.done,
+                            message.read ? Icons.done_all : Icons.done,
                             size: 12,
                             color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                           ),
@@ -433,7 +445,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      message.content,
+                      message.attachment!,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       errorBuilder: (context, error, stackTrace) {
@@ -459,7 +471,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _formatTime(message.timestamp),
+                          _formatTime(message.createdAt),
                           style: TextStyle(
                             color: isSent 
                                 ? Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7) 
@@ -472,7 +484,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         if (isSent) ...[
                           const SizedBox(width: 4),
                           Icon(
-                            message.isRead ? Icons.done_all : Icons.done,
+                            message.read ? Icons.done_all : Icons.done,
                             size: 12,
                             color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                           ),
@@ -662,9 +674,10 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  String _formatTime(DateTime timestamp) {
-    final hour = timestamp.hour.toString().padLeft(2, '0');
-    final minute = timestamp.minute.toString().padLeft(2, '0');
+  String _formatTime(int timestamp) {
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 } 

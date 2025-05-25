@@ -46,19 +46,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (_formKey.currentState!.validate() && _agreeToTerms) {
       try {
-        final success = await authProvider.register(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          _nameController.text.trim(),
-          _selectedRole,
-        );
+        // Don't create the user yet, just store the information and navigate to the appropriate form
+        final formData = {
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text.trim(),
+          'name': _nameController.text.trim(),
+          'role': _selectedRole[0].toUpperCase() + _selectedRole.substring(1),
+        };
 
-        if (success && mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        // Navigate to the appropriate form based on role
+        if (formData['role'] == 'Doctor') {
+          Navigator.pushReplacementNamed(
+            context, 
+            AppRoutes.doctorProfileForm, 
+            arguments: formData
+          );
+        } else {
+          Navigator.pushReplacementNamed(
+            context, 
+            AppRoutes.patientProfileForm, 
+            arguments: formData
+          );
         }
       } catch (e) {
         if (mounted) {

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_database/firebase_database.dart';
 
 class User {
@@ -17,6 +16,7 @@ class User {
   final List<String>? allergies;
   final List<String>? medications;
   final List<String>? chronicConditions;
+  final bool? isProfileComplete;
   
   // Doctor-specific fields
   final String? specialization;
@@ -48,6 +48,7 @@ class User {
     this.allergies,
     this.medications,
     this.chronicConditions,
+    this.isProfileComplete,
     // Doctor-specific fields
     this.specialization,
     this.yearsOfExperience,
@@ -63,7 +64,7 @@ class User {
     this.consultationFee,
   });
 
-  // Convert User object to Map
+  // Convert User to Map
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -81,6 +82,7 @@ class User {
       'allergies': allergies,
       'medications': medications,
       'chronicConditions': chronicConditions,
+      'isProfileComplete': isProfileComplete,
       // Doctor-specific fields
       'specialization': specialization,
       'yearsOfExperience': yearsOfExperience,
@@ -115,6 +117,7 @@ class User {
       allergies: map['allergies'] != null ? List<String>.from(map['allergies']) : null,
       medications: map['medications'] != null ? List<String>.from(map['medications']) : null,
       chronicConditions: map['chronicConditions'] != null ? List<String>.from(map['chronicConditions']) : null,
+      isProfileComplete: map['isProfileComplete'],
       // Doctor-specific fields
       specialization: map['specialization'],
       yearsOfExperience: map['yearsOfExperience'],
@@ -131,68 +134,18 @@ class User {
     );
   }
 
-  // Get current user from Firebase Auth and Database
-  static Future<User?> getCurrentUser() async {
-    try {
-      final firebase_auth.FirebaseAuth auth = firebase_auth.FirebaseAuth.instance;
-      final FirebaseDatabase database = FirebaseDatabase.instance;
-      
-      final firebase_auth.User? firebaseUser = auth.currentUser;
-      if (firebaseUser == null) {
-        print('No Firebase user found');
-        return null;
-      }
-
-      print('Fetching user data for: ${firebaseUser.uid}');
-      final DatabaseEvent event = await database.ref('users/${firebaseUser.uid}').once();
-      
-      if (!event.snapshot.exists) {
-        print('No user data found in database');
-        return null;
-      }
-
-      final Map<dynamic, dynamic>? data = event.snapshot.value as Map<dynamic, dynamic>?;
-      if (data == null) {
-        print('User data is null');
-        return null;
-      }
-
-      print('User data retrieved: $data');
-      final user = User.fromMap({
-        'id': firebaseUser.uid,
-        ...data,
-      });
-      print('User object created successfully');
-      return user;
-    } catch (e) {
-      print('Error getting current user: $e');
-      return null;
-    }
-  }
-
   // Stream user data changes
-  static Stream<User?> streamUserData() {
-    final firebase_auth.FirebaseAuth auth = firebase_auth.FirebaseAuth.instance;
+  static Stream<User?> streamUserData(String userId) {
     final FirebaseDatabase database = FirebaseDatabase.instance;
     
-    return auth.authStateChanges().asyncMap((firebaseUser) async {
-      if (firebaseUser == null) return null;
+    return database.ref('users/$userId').onValue.map((event) {
+      if (!event.snapshot.exists) return null;
 
-      try {
-        final DatabaseEvent event = await database.ref('users/${firebaseUser.uid}').once();
-        if (!event.snapshot.exists) return null;
-
-        final Map<dynamic, dynamic>? data = event.snapshot.value as Map<dynamic, dynamic>?;
-        if (data == null) return null;
-
-        return User.fromMap({
-          'id': firebaseUser.uid,
-          ...data,
-        });
-      } catch (e) {
-        print('Error streaming user data: $e');
-        return null;
-      }
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
+      return User.fromMap({
+        'id': userId,
+        ...data,
+      });
     });
   }
 
@@ -213,6 +166,7 @@ class User {
     List<String>? allergies,
     List<String>? medications,
     List<String>? chronicConditions,
+    bool? isProfileComplete,
     // Doctor-specific fields
     String? specialization,
     int? yearsOfExperience,
@@ -243,6 +197,7 @@ class User {
       allergies: allergies ?? this.allergies,
       medications: medications ?? this.medications,
       chronicConditions: chronicConditions ?? this.chronicConditions,
+      isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       // Doctor-specific fields
       specialization: specialization ?? this.specialization,
       yearsOfExperience: yearsOfExperience ?? this.yearsOfExperience,

@@ -16,10 +16,12 @@ class AuthService extends BaseService {
   // Sign in with email and password
   Future<UserCredential?> signInWithEmailAndPassword(String email, String password) async {
     try {
+      print('Starting sign in with email: $email');
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      print('Sign in successful for user: ${userCredential.user?.uid}');
       return userCredential;
     } on FirebaseAuthException catch (e) {
       print('Firebase Auth Error: ${e.code} - ${e.message}');
@@ -44,17 +46,42 @@ class AuthService extends BaseService {
       await userCredential.user?.updateDisplayName(name);
       print('User created successfully: ${userCredential.user?.uid}');
       
-      // Create user document in Realtime Database
-      await setData('users/${userCredential.user!.uid}', {
-        'id': userCredential.user!.uid,
-        'uid': userCredential.user!.uid,
-        'name': name,
-        'email': email,
-        'role': role,
-        'isVerified': false,
-        'createdAt': ServerValue.timestamp,
-        'updatedAt': ServerValue.timestamp,
-      });
+      if (userCredential.user != null) {
+        // Create user document in Realtime Database
+        final userId = userCredential.user!.uid;
+        
+        // Create user data map
+        final userData = {
+          'id': userId,
+          'uid': userId,
+          'name': name,
+          'email': email,
+          'role': role,
+          'isVerified': false,
+          'createdAt': ServerValue.timestamp,
+          'updatedAt': ServerValue.timestamp,
+        };
+        
+        // Store user data in the appropriate path based on role
+        await setData('users/${role}s/$userId', userData);
+        
+        // Also store in flat users structure for quick lookup
+        await setData('users/$userId', userData);
+        
+        // Create empty collections for user data
+        if (role == 'patient') {
+          await setData('medical_history/$userId', {
+            'allergies': [],
+            'medications': [],
+            'conditions': [],
+            'updatedAt': ServerValue.timestamp,
+          });
+        }
+        
+        // Verify data is properly written
+        final userRef = FirebaseDatabase.instance.ref('users/$userId');
+        await userRef.get();
+      }
 
       return userCredential;
     } catch (e) {
@@ -82,14 +109,31 @@ class AuthService extends BaseService {
 
       // Create user document if it doesn't exist
       if (result.additionalUserInfo?.isNewUser ?? false) {
-        await setData('users/${result.user!.uid}', {
-          'id': result.user!.uid,
-          'uid': result.user!.uid,
+        final userId = result.user!.uid;
+        final role = 'patient'; // Default role for Google sign-in
+        
+        final userData = {
+          'id': userId,
+          'uid': userId,
           'name': result.user?.displayName,
           'email': result.user?.email,
-          'role': 'patient', // Default role for Google sign-in
+          'role': role,
           'isVerified': false,
           'createdAt': ServerValue.timestamp,
+          'updatedAt': ServerValue.timestamp,
+        };
+        
+        // Store user data in the appropriate path based on role
+        await setData('users/${role}s/$userId', userData);
+        
+        // Also store in flat users structure for quick lookup
+        await setData('users/$userId', userData);
+        
+        // Create empty collections for user data
+        await setData('medical_history/$userId', {
+          'allergies': [],
+          'medications': [],
+          'conditions': [],
           'updatedAt': ServerValue.timestamp,
         });
       }

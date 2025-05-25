@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/user.dart' as app_user;
+import '../../models/user.dart';
 import '../../utils/theme/app_theme.dart';
 import '../../utils/theme/theme_provider.dart';
 import '../../widgets/custom_button.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../providers/auth_provider.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class MedicalHistoryScreen extends StatefulWidget {
@@ -15,7 +15,7 @@ class MedicalHistoryScreen extends StatefulWidget {
 }
 
 class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with SingleTickerProviderStateMixin {
-  app_user.User? _user;
+  User? _user;
   final TextEditingController _allergiesController = TextEditingController();
   final TextEditingController _medicationsController = TextEditingController();
   final TextEditingController _conditionsController = TextEditingController();
@@ -24,8 +24,12 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   int _selectedCategory = 0;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
+  
+  // Medical history data
+  List<String> _allergies = [];
+  List<String> _medications = [];
+  List<String> _conditions = [];
+  bool _isFetchingData = true;
   
   final List<Map<String, dynamic>> _categories = [
     {
@@ -48,7 +52,6 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
   @override
   void initState() {
     super.initState();
-    _loadUserData();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -60,176 +63,182 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
       ),
     );
     _animationController.forward();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserData();
+    });
   }
 
   Future<void> _loadUserData() async {
     setState(() {
-      _isLoading = true;
+      _isFetchingData = true;
     });
-
-    try {
-      final user = await app_user.User.getCurrentUser();
-      if (user != null) {
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _user = authProvider.user;
+    
+    if (_user != null) {
+      try {
+        final database = FirebaseDatabase.instance;
+        final medicalRef = database.ref('medical_history/${_user!.id}');
+        final snapshot = await medicalRef.get();
+        
+        if (snapshot.exists) {
+          final data = snapshot.value as Map<dynamic, dynamic>;
+          setState(() {
+            _allergies = List<String>.from(data['allergies'] ?? []);
+            _medications = List<String>.from(data['medications'] ?? []);
+            _conditions = List<String>.from(data['conditions'] ?? []);
+            _isFetchingData = false;
+          });
+        } else {
+          // Create empty medical history record
+          await database.ref('medical_history/${_user!.id}').set({
+            'allergies': [],
+            'medications': [],
+            'conditions': [],
+            'updatedAt': ServerValue.timestamp,
+          });
+          setState(() {
+            _allergies = [];
+            _medications = [];
+            _conditions = [];
+            _isFetchingData = false;
+          });
+        }
+      } catch (e) {
+        print('Error loading medical history: $e');
         setState(() {
-          _user = user;
+          _isFetchingData = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load medical history: $e')),
+        );
       }
-    } catch (e) {
-      print('Error loading user data: $e');
-      // Handle error appropriately
-    } finally {
+    } else {
       setState(() {
-        _isLoading = false;
+        _isFetchingData = false;
       });
     }
   }
 
-  Future<void> _addAllergy(String allergy) async {
+  @override
+  void dispose() {
+    _allergiesController.dispose();
+    _medicationsController.dispose();
+    _conditionsController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _addAllergy(String allergy) {
     if (allergy.isEmpty || _user == null) return;
     
-    try {
-      List<String> allergies = List<String>.from(_user!.allergies ?? []);
-      allergies.add(allergy);
-      
-      // Update in Firebase
-      await _database.ref('users/${_user!.id}/allergies').set(allergies);
-      
-      setState(() {
-        _user = _user!.copyWith(allergies: allergies);
-        _allergiesController.clear();
-      });
-      
-      _animationController.reset();
-      _animationController.forward();
-    } catch (e) {
-      print('Error adding allergy: $e');
-      // Handle error appropriately
-    }
+    setState(() {
+      _allergies.add(allergy);
+      _allergiesController.clear();
+    });
+    
+    _updateFirebaseData('allergies', _allergies);
+    
+    _animationController.reset();
+    _animationController.forward();
   }
 
-  Future<void> _removeAllergy(int index) async {
+  void _removeAllergy(int index) {
     if (_user == null) return;
     
-    try {
-      List<String> allergies = List<String>.from(_user!.allergies ?? []);
-      allergies.removeAt(index);
-      
-      // Update in Firebase
-      await _database.ref('users/${_user!.id}/allergies').set(allergies);
-      
-      setState(() {
-        _user = _user!.copyWith(allergies: allergies);
-      });
-    } catch (e) {
-      print('Error removing allergy: $e');
-      // Handle error appropriately
-    }
+    setState(() {
+      _allergies.removeAt(index);
+    });
+    
+    _updateFirebaseData('allergies', _allergies);
   }
 
-  Future<void> _addMedication(String medication) async {
+  void _addMedication(String medication) {
     if (medication.isEmpty || _user == null) return;
     
-    try {
-      List<String> medications = List<String>.from(_user!.medications ?? []);
-      medications.add(medication);
-      
-      // Update in Firebase
-      await _database.ref('users/${_user!.id}/medications').set(medications);
-      
-      setState(() {
-        _user = _user!.copyWith(medications: medications);
-        _medicationsController.clear();
-      });
-      
-      _animationController.reset();
-      _animationController.forward();
-    } catch (e) {
-      print('Error adding medication: $e');
-      // Handle error appropriately
-    }
+    setState(() {
+      _medications.add(medication);
+      _medicationsController.clear();
+    });
+    
+    _updateFirebaseData('medications', _medications);
+    
+    _animationController.reset();
+    _animationController.forward();
   }
 
-  Future<void> _removeMedication(int index) async {
+  void _removeMedication(int index) {
     if (_user == null) return;
     
-    try {
-      List<String> medications = List<String>.from(_user!.medications ?? []);
-      medications.removeAt(index);
-      
-      // Update in Firebase
-      await _database.ref('users/${_user!.id}/medications').set(medications);
-      
-      setState(() {
-        _user = _user!.copyWith(medications: medications);
-      });
-    } catch (e) {
-      print('Error removing medication: $e');
-      // Handle error appropriately
-    }
+    setState(() {
+      _medications.removeAt(index);
+    });
+    
+    _updateFirebaseData('medications', _medications);
   }
 
-  Future<void> _addCondition(String condition) async {
+  void _addCondition(String condition) {
     if (condition.isEmpty || _user == null) return;
     
-    try {
-      List<String> conditions = List<String>.from(_user!.chronicConditions ?? []);
-      conditions.add(condition);
-      
-      // Update in Firebase
-      await _database.ref('users/${_user!.id}/chronicConditions').set(conditions);
-      
-      setState(() {
-        _user = _user!.copyWith(chronicConditions: conditions);
-        _conditionsController.clear();
-      });
-      
-      _animationController.reset();
-      _animationController.forward();
-    } catch (e) {
-      print('Error adding condition: $e');
-      // Handle error appropriately
-    }
+    setState(() {
+      _conditions.add(condition);
+      _conditionsController.clear();
+    });
+    
+    _updateFirebaseData('conditions', _conditions);
+    
+    _animationController.reset();
+    _animationController.forward();
   }
 
-  Future<void> _removeCondition(int index) async {
+  void _removeCondition(int index) {
+    if (_user == null) return;
+    
+    setState(() {
+      _conditions.removeAt(index);
+    });
+    
+    _updateFirebaseData('conditions', _conditions);
+  }
+  
+  Future<void> _updateFirebaseData(String field, List<String> data) async {
     if (_user == null) return;
     
     try {
-      List<String> conditions = List<String>.from(_user!.chronicConditions ?? []);
-      conditions.removeAt(index);
-      
-      // Update in Firebase
-      await _database.ref('users/${_user!.id}/chronicConditions').set(conditions);
-      
-      setState(() {
-        _user = _user!.copyWith(chronicConditions: conditions);
-      });
+      final database = FirebaseDatabase.instance;
+      await database.ref('medical_history/${_user!.id}/$field').set(data);
+      await database.ref('medical_history/${_user!.id}/updatedAt').set(ServerValue.timestamp);
     } catch (e) {
-      print('Error removing condition: $e');
-      // Handle error appropriately
+      print('Error updating medical history: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update medical history: $e')),
+      );
     }
   }
 
-  Future<void> _saveMedicalHistory() async {
+  void _saveMedicalHistory() {
     if (_user == null) return;
-
+    
     setState(() {
       _isLoading = true;
     });
 
-    try {
-      // Save all medical history data to Firebase
-      await _database.ref('users/${_user!.id}').update({
-        'allergies': _user!.allergies,
-        'medications': _user!.medications,
-        'chronicConditions': _user!.chronicConditions,
+    // Update all medical history data
+    FirebaseDatabase.instance.ref('medical_history/${_user!.id}').update({
+      'allergies': _allergies,
+      'medications': _medications,
+      'conditions': _conditions,
+      'updatedAt': ServerValue.timestamp,
+    }).then((_) {
+      setState(() {
+        _isLoading = false;
       });
-
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
-            children: const [
+            children: [
               Icon(Icons.check_circle, color: Colors.white),
               SizedBox(width: 12),
               Text('Medical history updated successfully'),
@@ -240,36 +249,17 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          margin: const EdgeInsets.all(8),
+          margin: EdgeInsets.all(8),
         ),
       );
-    } catch (e) {
-      print('Error saving medical history: $e');
-      if (!mounted) return;
+    }).catchError((error) {
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Failed to update medical history'),
-            ],
-          ),
-          backgroundColor: AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(8),
-        ),
+        SnackBar(content: Text('Failed to update medical history: $error')),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    });
   }
 
   void _changeCategory(int index) {
@@ -284,6 +274,48 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
+    
+    // Check if user is not logged in
+    if (_user == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Medical History'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: isDarkMode ? Colors.white70 : Colors.grey[700],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Please sign in to view your medical history',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    // Show loading indicator while fetching data
+    if (_isFetchingData) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Medical History'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     
     return Scaffold(
       appBar: AppBar(
@@ -368,8 +400,8 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
         boxShadow: [
           BoxShadow(
             color: isDarkMode 
-                ? Colors.black.withValues(alpha: 0.2) 
-                : Colors.grey.withValues(alpha: 0.1),
+                ? Colors.black.withOpacity(0.2) 
+                : Colors.grey.withOpacity(0.1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -391,9 +423,9 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected 
-                    ? category['color'].withValues(alpha: isDarkMode ? 0.2 : 0.1)
+                    ? category['color'].withOpacity(isDarkMode ? 0.2 : 0.1)
                     : isDarkMode 
-                        ? Colors.grey.shade800.withValues(alpha: 0.3)
+                        ? Colors.grey.shade800.withOpacity(0.3)
                         : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
@@ -471,7 +503,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
             isDarkMode,
           ),
           const SizedBox(height: 24),
-          _user?.allergies == null || _user!.allergies!.isEmpty
+          _allergies.isEmpty
               ? _buildEmptyState(
                   Icons.dangerous_outlined, 
                   'No allergies recorded', 
@@ -479,7 +511,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
                   isDarkMode,
                 )
               : _buildItemsList(
-                  _user!.allergies!, 
+                  _allergies, 
                   Icons.dangerous_outlined, 
                   Colors.redAccent,
                   _removeAllergy,
@@ -512,7 +544,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
             isDarkMode,
           ),
           const SizedBox(height: 24),
-          _user?.medications == null || _user!.medications!.isEmpty
+          _medications.isEmpty
               ? _buildEmptyState(
                   Icons.medication_outlined, 
                   'No medications recorded', 
@@ -520,7 +552,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
                   isDarkMode,
                 )
               : _buildItemsList(
-                  _user!.medications!, 
+                  _medications, 
                   Icons.medication_outlined, 
                   Colors.blueAccent,
                   _removeMedication,
@@ -553,7 +585,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
             isDarkMode,
           ),
           const SizedBox(height: 24),
-          _user?.chronicConditions == null || _user!.chronicConditions!.isEmpty
+          _conditions.isEmpty
               ? _buildEmptyState(
                   Icons.healing_outlined, 
                   'No chronic conditions recorded', 
@@ -561,7 +593,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
                   isDarkMode,
                 )
               : _buildItemsList(
-                  _user!.chronicConditions!, 
+                  _conditions, 
                   Icons.healing_outlined, 
                   Colors.orangeAccent,
                   _removeCondition,
@@ -578,7 +610,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            color: color.withOpacity(isDarkMode ? 0.2 : 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -615,8 +647,8 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
         boxShadow: [
           BoxShadow(
             color: isDarkMode 
-                ? Colors.black.withValues(alpha: 0.2) 
-                : Colors.grey.withValues(alpha: 0.1),
+                ? Colors.black.withOpacity(0.2) 
+                : Colors.grey.withOpacity(0.1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -666,8 +698,8 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
         boxShadow: [
           BoxShadow(
             color: isDarkMode 
-                ? Colors.black.withValues(alpha: 0.2) 
-                : Colors.grey.withValues(alpha: 0.1),
+                ? Colors.black.withOpacity(0.2) 
+                : Colors.grey.withOpacity(0.1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -680,7 +712,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+                color: color.withOpacity(isDarkMode ? 0.2 : 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -757,8 +789,8 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
         boxShadow: [
           BoxShadow(
             color: isDarkMode 
-                ? Colors.black.withValues(alpha: 0.2) 
-                : Colors.grey.withValues(alpha: 0.1),
+                ? Colors.black.withOpacity(0.2) 
+                : Colors.grey.withOpacity(0.1),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -772,7 +804,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: isDarkMode ? 0.2 : 0.1),
+            color: color.withOpacity(isDarkMode ? 0.2 : 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(

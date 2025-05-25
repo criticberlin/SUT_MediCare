@@ -8,6 +8,8 @@ import 'utils/theme/app_theme.dart';
 import 'utils/theme/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/doctor_provider.dart';
+import 'providers/payment_provider.dart';
+import 'providers/appointment_provider.dart'; // Added
 import 'routes.dart';
 import 'models/user.dart' as app_user;
 
@@ -26,11 +28,12 @@ import 'screens/chat/chat_list_screen.dart';
 import 'screens/video/video_call_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
-import 'screens/profile/doctor_profile_form.dart';
 import 'screens/profile/medical_history_screen.dart';
 import 'screens/profile/payment_methods_screen.dart';
 import 'screens/profile/settings_screen.dart';
 import 'screens/profile/help_support_screen.dart';
+import 'screens/profile/patient_profile_form.dart';
+import 'screens/profile/doctor_profile_form.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/doctor/dashboard_screen.dart';
 import 'screens/doctor/appointments_screen.dart';
@@ -66,16 +69,7 @@ void main() async {
     }
   }
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => DoctorProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -87,7 +81,26 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => DoctorProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, DoctorProvider>(
+          create: (_) => DoctorProvider(),
+          update: (_, authProvider, previousDoctorProvider) => previousDoctorProvider ?? DoctorProvider(),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, PaymentProvider>(
+          create: (context) => PaymentProvider(Provider.of<AuthProvider>(context, listen: false)),
+          update: (_, authProvider, previousPaymentProvider) => 
+            previousPaymentProvider ?? PaymentProvider(authProvider),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, AppointmentProvider>(
+          create: (_) => AppointmentProvider(),
+          update: (_, authProvider, previousAppointmentProvider) {
+            final provider = previousAppointmentProvider ?? AppointmentProvider();
+            if (authProvider.user != null) {
+              provider.setCachedUserRole(authProvider.user!.role);
+              provider.setupStreams();
+            }
+            return provider;
+          },
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -157,20 +170,14 @@ class MyApp extends StatelessWidget {
                     builder: (_) => EditProfileScreen(user: user),
                   );
                 case AppRoutes.doctorProfileForm:
-                  final user = settings.arguments as app_user.User?;
-                  if (user == null) {
-                    return MaterialPageRoute(builder: (_) => const ProfileScreen());
-                  }
+                  final userData = settings.arguments;
                   return MaterialPageRoute(
-                    builder: (_) => DoctorProfileForm(user: user),
+                    builder: (_) => DoctorProfileForm(userData: userData),
                   );
                 case AppRoutes.patientProfileForm:
-                  final user = settings.arguments as app_user.User?;
-                  if (user == null) {
-                    return MaterialPageRoute(builder: (_) => const ProfileScreen());
-                  }
+                  final userData = settings.arguments;
                   return MaterialPageRoute(
-                    builder: (_) => EditProfileScreen(user: user),
+                    builder: (_) => PatientProfileForm(userData: userData),
                   );
                 case AppRoutes.medicalHistory:
                   return MaterialPageRoute(builder: (_) => const MedicalHistoryScreen());
