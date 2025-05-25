@@ -37,6 +37,24 @@ class AuthService extends BaseService {
       String email, String password, String name, String role) async {
     try {
       print('Creating user with email: $email and role: $role');
+      
+      // Check if email is already in use
+      try {
+        final methods = await _auth.fetchSignInMethodsForEmail(email);
+        if (methods.isNotEmpty) {
+          throw FirebaseAuthException(
+            code: 'email-already-in-use',
+            message: 'This email is already in use. Please use a different email or try logging in.',
+          );
+        }
+      } catch (e) {
+        if (e is FirebaseAuthException && e.code != 'user-not-found') {
+          rethrow;
+        }
+        // If user-not-found exception, the email is not in use, continue with registration
+      }
+      
+      // Create the user in Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -57,20 +75,24 @@ class AuthService extends BaseService {
           'name': name,
           'email': email,
           'role': role,
-          'isVerified': false,
+          'isVerified': role == 'Patient' ? true : false, // Only doctors need verification
+          'isProfileComplete': false,
           'createdAt': ServerValue.timestamp,
           'updatedAt': ServerValue.timestamp,
         };
         
         // Store user data in the appropriate path based on role
-        await setData('users/${role}s/$userId', userData);
+        final database = FirebaseDatabase.instance;
+        final userRoleRef = database.ref('users/${role}s/$userId');
+        final flatUserRef = database.ref('users/$userId');
         
-        // Also store in flat users structure for quick lookup
-        await setData('users/$userId', userData);
+        // Set data at both locations
+        await userRoleRef.set(userData);
+        await flatUserRef.set(userData);
         
-        // Create empty collections for user data
-        if (role == 'patient') {
-          await setData('medical_history/$userId', {
+        // Create empty collections for user data if needed
+        if (role == 'Patient') {
+          await database.ref('medical_history/$userId').set({
             'allergies': [],
             'medications': [],
             'conditions': [],
@@ -79,8 +101,10 @@ class AuthService extends BaseService {
         }
         
         // Verify data is properly written
-        final userRef = FirebaseDatabase.instance.ref('users/$userId');
-        await userRef.get();
+        final userSnapshot = await flatUserRef.get();
+        if (!userSnapshot.exists) {
+          throw Exception('Failed to write user data to database');
+        }
       }
 
       return userCredential;

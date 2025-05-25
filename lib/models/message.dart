@@ -3,30 +3,36 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class Message {
   final String id;
+  final String chatId;
   final String senderId;
-  final String text;
-  final String? attachment;
-  final bool read;
-  final int createdAt;
+  final String content;
+  final String type; // 'text', 'image', 'video', etc.
+  final DateTime timestamp;
+  final bool isRead;
+  final Map<String, bool>? readBy; // Map of userIds to read status
 
   Message({
     required this.id,
+    required this.chatId,
     required this.senderId,
-    required this.text,
-    this.attachment,
-    required this.read,
-    required this.createdAt,
+    required this.content,
+    required this.type,
+    required this.timestamp,
+    required this.isRead,
+    this.readBy,
   });
 
   // Convert Message to Map
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'chatId': chatId,
       'senderId': senderId,
-      'text': text,
-      'attachment': attachment,
-      'read': read,
-      'createdAt': createdAt,
+      'content': content,
+      'type': type,
+      'timestamp': timestamp.toIso8601String(),
+      'isRead': isRead,
+      'readBy': readBy,
     };
   }
 
@@ -34,93 +40,136 @@ class Message {
   factory Message.fromMap(Map<String, dynamic> map) {
     return Message(
       id: map['id'] ?? '',
+      chatId: map['chatId'] ?? '',
       senderId: map['senderId'] ?? '',
-      text: map['text'] ?? '',
-      attachment: map['attachment'],
-      read: map['read'] ?? false,
-      createdAt: map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch,
-    );
-  }
-  
-  // Create a copy of the message with updated values
-  Message copyWith({
-    String? id,
-    String? senderId,
-    String? text,
-    String? attachment,
-    bool? read,
-    int? createdAt,
-  }) {
-    return Message(
-      id: id ?? this.id,
-      senderId: senderId ?? this.senderId,
-      text: text ?? this.text,
-      attachment: attachment ?? this.attachment,
-      read: read ?? this.read,
-      createdAt: createdAt ?? this.createdAt,
+      content: map['content'] ?? '',
+      type: map['type'] ?? 'text',
+      timestamp: map['timestamp'] is int
+          ? DateTime.fromMillisecondsSinceEpoch(map['timestamp'])
+          : map['timestamp'] is String
+              ? DateTime.parse(map['timestamp'])
+              : DateTime.now(),
+      isRead: map['isRead'] ?? false,
+      readBy: map['readBy'] != null ? Map<String, bool>.from(map['readBy']) : null,
     );
   }
 
-  // Get chat messages for a specific chatId
-  static Stream<List<Message>> getChatMessages(String chatId) async* {
+  // Create a new message
+  static Future<String> createMessage({
+    required String chatId,
+    required String senderId,
+    required String content,
+    String type = 'text',
+  }) async {
     final database = FirebaseDatabase.instance;
-    final messagesRef = database.ref('messages/$chatId')
-        .orderByChild('createdAt');
+    final messageRef = database.ref('messages/$chatId').push();
+    final id = messageRef.key!;
+    
+    final message = Message(
+      id: id,
+      chatId: chatId,
+      senderId: senderId,
+      content: content,
+      type: type,
+      timestamp: DateTime.now(),
+      isRead: false,
+      readBy: {senderId: true},
+    );
+    
+    await messageRef.set(message.toMap());
+    
+    // Update the chat's last message
+    await database.ref('chats/$chatId').update({
+      'lastMessage': content,
+      'updatedAt': ServerValue.timestamp,
+    });
+    
+    return id;
+  }
 
-    yield* messagesRef.onValue.map((event) {
+  // Get all messages for a chat
+  static Future<List<Message>> getMessagesForChat(String chatId) async {
+    final database = FirebaseDatabase.instance;
+    final messagesRef = database.ref('messages/$chatId');
+    final snapshot = await messagesRef.orderByChild('timestamp').get();
+    
+    if (!snapshot.exists) return [];
+    
+    final messagesData = snapshot.value as Map<dynamic, dynamic>;
+    final messages = <Message>[];
+    
+    messagesData.forEach((key, value) {
+      final data = value as Map<dynamic, dynamic>;
+      messages.add(Message.fromMap({
+        'id': key,
+        ...Map<String, dynamic>.from(data),
+      }));
+    });
+    
+    // Sort by timestamp, oldest first
+    messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    return messages;
+  }
+
+  // Stream messages for a chat
+  static Stream<List<Message>> streamMessagesForChat(String chatId) {
+    final database = FirebaseDatabase.instance;
+    final messagesRef = database.ref('messages/$chatId');
+    
+    return messagesRef.onValue.map((event) {
       if (!event.snapshot.exists) return [];
-
-      final List<Message> messages = [];
-      final data = event.snapshot.value as Map<dynamic, dynamic>;
       
-      data.forEach((key, value) {
-        final message = Message.fromMap({
+      final messagesData = event.snapshot.value as Map<dynamic, dynamic>;
+      final messages = <Message>[];
+      
+      messagesData.forEach((key, value) {
+        final data = value as Map<dynamic, dynamic>;
+        messages.add(Message.fromMap({
           'id': key,
-          ...Map<String, dynamic>.from(value as Map),
-        });
-        messages.add(message);
+          ...Map<String, dynamic>.from(data),
+        }));
       });
-
-      messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      
+      // Sort by timestamp, oldest first
+      messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
       return messages;
     });
   }
 
-  // Send a new message
-  static Future<void> sendMessage({
-    required String chatId,
-    required String senderId,
-    required String text,
-    String? attachment,
-  }) async {
+  // Mark message as read by user
+  Future<void> markAsReadBy(String userId) async {
     final database = FirebaseDatabase.instance;
-    final newMessageRef = database.ref('messages/$chatId').push();
     
-    final messageData = {
-      'id': newMessageRef.key,
-      'senderId': senderId,
-      'text': text,
-      'attachment': attachment,
-      'read': false,
-      'createdAt': ServerValue.timestamp,
-    };
+    final updatedReadBy = readBy ?? {};
+    updatedReadBy[userId] = true;
     
-    // Add message
-    await newMessageRef.set(messageData);
-    
-    // Update chat's last message
-    await database.ref('chats/$chatId').update({
-      'lastMessage': text,
-      'lastMessageSender': senderId,
-      'lastMessageTime': ServerValue.timestamp,
-      'updatedAt': ServerValue.timestamp,
+    await database.ref('messages/$chatId/$id').update({
+      'readBy': updatedReadBy,
+      'isRead': true,
     });
   }
 
-  // Mark message as read
-  Future<void> markAsRead() async {
-    final database = FirebaseDatabase.instance;
-    await database.ref('messages/$id').update({'read': true});
+  // Create a copy of this message with updated fields
+  Message copyWith({
+    String? id,
+    String? chatId,
+    String? senderId,
+    String? content,
+    String? type,
+    DateTime? timestamp,
+    bool? isRead,
+    Map<String, bool>? readBy,
+  }) {
+    return Message(
+      id: id ?? this.id,
+      chatId: chatId ?? this.chatId,
+      senderId: senderId ?? this.senderId,
+      content: content ?? this.content,
+      type: type ?? this.type,
+      timestamp: timestamp ?? this.timestamp,
+      isRead: isRead ?? this.isRead,
+      readBy: readBy ?? this.readBy,
+    );
   }
 }
 

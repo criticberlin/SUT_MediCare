@@ -31,6 +31,21 @@ class User {
   final Map<String, dynamic>? availability;
   final List<String>? acceptedInsurance;
   final double? consultationFee;
+  
+  // Patient-specific fields
+  final int? appointmentCount;
+  final int? prescriptionCount;
+  final int? reportCount;
+  
+  // Additional fields for profile display
+  final int? patientCount;
+
+  // Getters for convenience
+  int? get experience => yearsOfExperience;
+  int? get patients => patientCount;
+  int? get appointments => appointmentCount;
+  int? get prescriptions => prescriptionCount;
+  int? get reports => reportCount;
 
   User({
     required this.id,
@@ -62,6 +77,12 @@ class User {
     this.availability,
     this.acceptedInsurance,
     this.consultationFee,
+    // Patient-specific fields
+    this.appointmentCount,
+    this.prescriptionCount,
+    this.reportCount,
+    // Additional fields
+    this.patientCount,
   });
 
   // Convert User to Map
@@ -96,6 +117,12 @@ class User {
       'availability': availability,
       'acceptedInsurance': acceptedInsurance,
       'consultationFee': consultationFee,
+      // Patient-specific fields
+      'appointmentCount': appointmentCount,
+      'prescriptionCount': prescriptionCount,
+      'reportCount': reportCount,
+      // Additional fields
+      'patientCount': patientCount,
     };
   }
 
@@ -131,6 +158,12 @@ class User {
       availability: map['availability'],
       acceptedInsurance: map['acceptedInsurance'] != null ? List<String>.from(map['acceptedInsurance']) : null,
       consultationFee: map['consultationFee']?.toDouble(),
+      // Patient-specific fields
+      appointmentCount: map['appointmentCount'],
+      prescriptionCount: map['prescriptionCount'],
+      reportCount: map['reportCount'],
+      // Additional fields
+      patientCount: map['patientCount'],
     );
   }
 
@@ -180,6 +213,12 @@ class User {
     Map<String, dynamic>? availability,
     List<String>? acceptedInsurance,
     double? consultationFee,
+    // Patient-specific fields
+    int? appointmentCount,
+    int? prescriptionCount,
+    int? reportCount,
+    // Additional fields
+    int? patientCount,
   }) {
     return User(
       id: id ?? this.id,
@@ -211,6 +250,12 @@ class User {
       availability: availability ?? this.availability,
       acceptedInsurance: acceptedInsurance ?? this.acceptedInsurance,
       consultationFee: consultationFee ?? this.consultationFee,
+      // Patient-specific fields
+      appointmentCount: appointmentCount ?? this.appointmentCount,
+      prescriptionCount: prescriptionCount ?? this.prescriptionCount,
+      reportCount: reportCount ?? this.reportCount,
+      // Additional fields
+      patientCount: patientCount ?? this.patientCount,
     );
   }
 

@@ -106,97 +106,40 @@ class ProfileScreen extends StatelessWidget {
                 right: 20,
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Profile image
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 4,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          spreadRadius: 2,
+                  // Profile picture
+                  Center(
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 3,
                         ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(50),
-                          child: user.profileImage != null && user.profileImage!.isNotEmpty
-                              ? Image.network(
-                                  user.profileImage!,
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return CircleAvatar(
-                                      radius: 50,
-                                      backgroundColor: Colors.grey[200],
-                                      child: Icon(
-                                        Icons.person,
-                                        size: 50,
-                                        color: Colors.grey[400],
-                                      ),
-                                    );
-                                  },
-                                )
-                              : CircleAvatar(
-                                  radius: 50,
-                                  backgroundColor: Colors.grey[200],
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 50,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: GestureDetector(
-                            onTap: () {
-                              // TODO: Implement image picking functionality
-                            },
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.1),
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 5,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
                           ),
+                        ],
+                        // Using a default profile image - in a real app, this would use the user's image
+                        image: DecorationImage(
+                          image: user.profileImage != null
+                              ? NetworkImage(user.profileImage!)
+                              : const AssetImage('assets/images/default_profile.png') as ImageProvider,
+                          fit: BoxFit.cover,
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 15),
                   // User name
                   Text(
-                    user.name,
+                    user.role == 'Doctor' ? 'Dr. ${user.name}' : user.name,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -228,75 +171,30 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   // Add role-specific info
-                  if (user.role == 'Doctor') ...[
-                    const SizedBox(height: 4),
+                  const SizedBox(height: 4),
+                  if (user.role == 'Doctor')
                     Text(
-                      user.specialization ?? 'Medical Professional',
+                      user.specialization ?? 'Medical Specialist',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
+                        fontStyle: FontStyle.italic,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 10.0,
+                            color: Colors.black26,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
-                    if (user.isVerified == true) ...[
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.verified, color: Colors.white, size: 12),
-                            SizedBox(width: 4),
-                            Text(
-                              'Verified',
-                              style: TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ]
-                  ] else if (user.role == 'Patient') ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Patient',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    if (user.bloodType != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Blood Type: ${user.bloodType}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
                 ],
               ),
             ),
           ],
         ),
       ),
-      actions: [
-        IconButton(
-          icon: Icon(
-            Icons.settings_outlined,
-            color: isDarkMode ? Colors.white : Colors.white,
-          ),
-          onPressed: () {
-            Navigator.pushNamed(context, AppRoutes.settings);
-          },
-        ),
-      ],
     );
   }
 
@@ -304,135 +202,102 @@ class ProfileScreen extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
     
-    // Define stats based on user role
+    // Different stats based on user role
     List<Map<String, dynamic>> stats = [];
     
     if (user.role == 'Doctor') {
       stats = [
         {
-          'icon': Icons.person,
-          'value': user.yearsOfExperience?.toString() ?? '0',
+          'value': user.experience ?? '0',
           'label': 'Years Exp.',
+          'icon': Icons.work_outline,
         },
         {
-          'icon': Icons.star,
-          'value': user.rating?.toString() ?? '0.0',
+          'value': user.patients ?? '0',
+          'label': 'Patients',
+          'icon': Icons.people_outline,
+        },
+        {
+          'value': user.rating != null ? '${user.rating}/5' : '4.5/5',
           'label': 'Rating',
-        },
-        {
-          'icon': Icons.people,
-          'value': user.totalReviews?.toString() ?? '0',
-          'label': 'Reviews',
-        },
-        {
-          'icon': Icons.local_hospital,
-          'value': user.isVerified == true ? 'Yes' : 'No',
-          'label': 'Verified',
+          'icon': Icons.star_outline,
         },
       ];
     } else {
-      // Patient stats
+      // For patients
       stats = [
         {
-          'icon': Icons.calendar_today,
-          'value': '12', // TODO: Fetch from appointments
-          'label': 'Appointments',
+          'value': user.appointments ?? '0',
+          'label': 'Visits',
+          'icon': Icons.calendar_today_outlined,
         },
         {
-          'icon': Icons.medical_services,
-          'value': user.medications?.length.toString() ?? '0',
-          'label': 'Medications',
+          'value': user.prescriptions ?? '0',
+          'label': 'Prescriptions',
+          'icon': Icons.medical_services_outlined,
         },
         {
-          'icon': Icons.warning_amber,
-          'value': user.allergies?.length.toString() ?? '0',
-          'label': 'Allergies',
-        },
-        {
-          'icon': Icons.favorite,
-          'value': user.bloodType ?? 'N/A',
-          'label': 'Blood Type',
+          'value': user.reports ?? '0',
+          'label': 'Reports',
+          'icon': Icons.description_outlined,
         },
       ];
     }
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 15),
       decoration: BoxDecoration(
         color: isDarkMode ? AppTheme.darkCardColor : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode ? Colors.black12 : Colors.grey.shade100,
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            spreadRadius: 5,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: stats.map((stat) {
-          return _buildStatItem(
-            context,
-            icon: stat['icon'] as IconData,
-            value: stat['value'] as String,
-            label: stat['label'] as String,
+          return Expanded(
+            child: Column(
+              children: [
+                Icon(
+                  stat['icon'] as IconData,
+                  color: AppTheme.primaryColor,
+                  size: 24,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  stat['value'].toString(),
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  stat['label'] as String,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           );
         }).toList(),
       ),
     );
   }
 
-  Widget _buildStatItem(
-    BuildContext context, {
-    required IconData icon,
-    required String value,
-    required String label,
-  }) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDarkMode = themeProvider.isDarkMode;
-    
-    return Column(
-      children: [
-        Container(
-          width: 45,
-          height: 45,
-          decoration: BoxDecoration(
-            color: isDarkMode
-                ? AppTheme.primaryColor.withOpacity(0.15)
-                : AppTheme.primaryColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: AppTheme.primaryColor,
-            size: 20,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black87,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildProfileMenu(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
     final user = authProvider.user;
     
     if (user == null) {
@@ -445,7 +310,7 @@ class ProfileScreen extends StatelessWidget {
         'icon': Icons.person_outline,
         'title': 'Personal Information',
         'subtitle': 'View and update your details',
-        'route': AppRoutes.editProfile,
+        'route': user.role == 'Doctor' ? AppRoutes.doctorProfileForm : AppRoutes.patientProfileForm,
       },
       {
         'icon': Icons.notifications_outlined,
@@ -486,22 +351,15 @@ class ProfileScreen extends StatelessWidget {
     } else if (user.role == 'Doctor') {
       // Insert at index 1 for doctor-specific options
       options.insert(1, {
-        'icon': Icons.dashboard_outlined,
-        'title': 'Doctor Dashboard',
-        'subtitle': 'View your practice overview',
-        'route': AppRoutes.doctorDashboard,
-      });
-      
-      options.insert(2, {
         'icon': Icons.people_outline,
         'title': 'My Patients',
         'subtitle': 'View and manage your patients',
         'route': AppRoutes.doctorPatients,
       });
       
-      options.insert(3, {
+      options.insert(2, {
         'icon': Icons.calendar_today_outlined,
-        'title': 'My Schedule',
+        'title': 'Schedule',
         'subtitle': 'Manage your availability',
         'route': AppRoutes.doctorSchedule,
       });
@@ -511,8 +369,8 @@ class ProfileScreen extends StatelessWidget {
     options.add({
       'icon': Icons.logout,
       'title': 'Logout',
-      'subtitle': 'Sign out from your account',
-      'route': null,
+      'subtitle': 'Sign out of your account',
+      'isLogout': true,
     });
 
     return Padding(
@@ -528,7 +386,7 @@ class ProfileScreen extends StatelessWidget {
                 title: option['title'] as String,
                 subtitle: option['subtitle'] as String,
                 route: option['route'] as String?,
-                isLogout: option['title'] == 'Logout',
+                isLogout: option['isLogout'] as bool,
               )),
         ],
       ),

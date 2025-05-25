@@ -5,14 +5,20 @@ class Appointment {
   final String id;
   final String patientId;
   final String doctorId;
-  final DateTime dateTime;
-  final String reason;
-  final int duration;
+  final DateTime date;
+  final String timeSlot;
+  final String status; // 'pending', 'confirmed', 'completed', 'canceled'
+  final String type; // 'online', 'in-person'
+  final String? symptoms;
   final String? notes;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final bool isPatientNotified;
+  final bool isDoctorNotified;
+  final String? meetingUrl; // For online appointments
   final double? fee;
-  final String status;
-  final int createdAt;
-  final int updatedAt;
+  final bool? isPaid;
+  final String? paymentId;
   
   // Optional loaded data
   final Map<String, dynamic>? patientData;
@@ -22,14 +28,20 @@ class Appointment {
     required this.id,
     required this.patientId,
     required this.doctorId,
-    required this.dateTime,
-    required this.reason,
-    required this.duration,
-    this.notes,
-    this.fee,
+    required this.date,
+    required this.timeSlot,
     required this.status,
+    required this.type,
     required this.createdAt,
-    required this.updatedAt,
+    this.symptoms,
+    this.notes,
+    this.updatedAt,
+    this.isPatientNotified = false,
+    this.isDoctorNotified = false,
+    this.meetingUrl,
+    this.fee,
+    this.isPaid,
+    this.paymentId,
     this.patientData,
     this.doctorData,
   });
@@ -40,14 +52,20 @@ class Appointment {
       'id': id,
       'patientId': patientId,
       'doctorId': doctorId,
-      'dateTime': dateTime.toIso8601String(),
-      'reason': reason,
-      'duration': duration,
-      'notes': notes,
-      'fee': fee,
+      'date': date.toIso8601String(),
+      'timeSlot': timeSlot,
       'status': status,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
+      'type': type,
+      'symptoms': symptoms,
+      'notes': notes,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+      'isPatientNotified': isPatientNotified,
+      'isDoctorNotified': isDoctorNotified,
+      'meetingUrl': meetingUrl,
+      'fee': fee,
+      'isPaid': isPaid,
+      'paymentId': paymentId,
     };
   }
 
@@ -57,16 +75,22 @@ class Appointment {
       id: map['id'] ?? '',
       patientId: map['patientId'] ?? '',
       doctorId: map['doctorId'] ?? '',
-      dateTime: map['dateTime'] != null
-          ? DateTime.parse(map['dateTime'])
-          : DateTime.now(),
-      reason: map['reason'] ?? '',
-      duration: map['duration'] ?? 30,
-      notes: map['notes'],
-      fee: map['fee']?.toDouble(),
+      date: DateTime.parse(map['date']),
+      timeSlot: map['timeSlot'] ?? '',
       status: map['status'] ?? 'pending',
-      createdAt: map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch,
-      updatedAt: map['updatedAt'] ?? DateTime.now().millisecondsSinceEpoch,
+      type: map['type'] ?? 'in-person',
+      symptoms: map['symptoms'],
+      notes: map['notes'],
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
+      updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
+      isPatientNotified: map['isPatientNotified'] ?? false,
+      isDoctorNotified: map['isDoctorNotified'] ?? false,
+      meetingUrl: map['meetingUrl'],
+      fee: map['fee']?.toDouble(),
+      isPaid: map['isPaid'],
+      paymentId: map['paymentId'],
       patientData: map['patientData'],
       doctorData: map['doctorData'],
     );
@@ -77,14 +101,20 @@ class Appointment {
     String? id,
     String? patientId,
     String? doctorId,
-    DateTime? dateTime,
-    String? reason,
-    int? duration,
-    String? notes,
-    double? fee,
+    DateTime? date,
+    String? timeSlot,
     String? status,
-    int? createdAt,
-    int? updatedAt,
+    String? type,
+    String? symptoms,
+    String? notes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isPatientNotified,
+    bool? isDoctorNotified,
+    String? meetingUrl,
+    double? fee,
+    bool? isPaid,
+    String? paymentId,
     Map<String, dynamic>? patientData,
     Map<String, dynamic>? doctorData,
   }) {
@@ -92,14 +122,20 @@ class Appointment {
       id: id ?? this.id,
       patientId: patientId ?? this.patientId,
       doctorId: doctorId ?? this.doctorId,
-      dateTime: dateTime ?? this.dateTime,
-      reason: reason ?? this.reason,
-      duration: duration ?? this.duration,
-      notes: notes ?? this.notes,
-      fee: fee ?? this.fee,
+      date: date ?? this.date,
+      timeSlot: timeSlot ?? this.timeSlot,
       status: status ?? this.status,
+      type: type ?? this.type,
+      symptoms: symptoms ?? this.symptoms,
+      notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isPatientNotified: isPatientNotified ?? this.isPatientNotified,
+      isDoctorNotified: isDoctorNotified ?? this.isDoctorNotified,
+      meetingUrl: meetingUrl ?? this.meetingUrl,
+      fee: fee ?? this.fee,
+      isPaid: isPaid ?? this.isPaid,
+      paymentId: paymentId ?? this.paymentId,
       patientData: patientData ?? this.patientData,
       doctorData: doctorData ?? this.doctorData,
     );
@@ -125,7 +161,7 @@ class Appointment {
         appointments.add(Appointment.fromMap(Map<String, dynamic>.from(value)));
       });
 
-      appointments.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      appointments.sort((a, b) => a.date.compareTo(b.date));
       return appointments;
     });
   }
@@ -147,7 +183,7 @@ class Appointment {
         appointments.add(Appointment.fromMap(Map<String, dynamic>.from(value)));
       });
 
-      appointments.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      appointments.sort((a, b) => a.date.compareTo(b.date));
       return appointments;
     });
   }

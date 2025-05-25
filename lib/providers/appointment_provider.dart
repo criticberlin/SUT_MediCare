@@ -15,13 +15,13 @@ class AppointmentProvider with ChangeNotifier {
   String? _error;
   List<Appointment>? _appointments;
   List<Chat>? _chats;
-  List<NotificationModel>? _notifications;
+  List<AppNotification>? _notifications;
   
   bool get isLoading => _isLoading;
   String? get error => _error;
   List<Appointment>? get appointments => _appointments;
   List<Chat>? get chats => _chats;
-  List<NotificationModel>? get notifications => _notifications;
+  List<AppNotification>? get notifications => _notifications;
   
   // Get the current user ID
   String? get currentUserId => _auth.currentUser?.uid;
@@ -159,8 +159,8 @@ class AppointmentProvider with ChangeNotifier {
   // Send a message
   Future<void> sendMessage({
     required String chatId, 
-    required String text, 
-    String? attachment
+    required String content, 
+    String type = 'text'
   }) async {
     if (!isAuthenticated) {
       _error = 'User not authenticated';
@@ -175,11 +175,11 @@ class AppointmentProvider with ChangeNotifier {
     try {
       final senderId = currentUserId!;
       
-      await _appointmentService.sendMessage(
+      await Message.createMessage(
         chatId: chatId,
         senderId: senderId,
-        text: text,
-        attachment: attachment,
+        content: content,
+        type: type,
       );
       
       _error = null;
@@ -203,7 +203,7 @@ class AppointmentProvider with ChangeNotifier {
     try {
       final messagesSnapshot = await FirebaseDatabase.instance
           .ref('messages/$chatId')
-          .orderByChild('createdAt')
+          .orderByChild('timestamp')
           .get();
           
       if (!messagesSnapshot.exists) {
@@ -222,7 +222,7 @@ class AppointmentProvider with ChangeNotifier {
       
       // Sort by creation time
       messages.sort((a, b) => 
-        a.createdAt.compareTo(b.createdAt)
+        a.timestamp.compareTo(b.timestamp)
       );
       
       return messages;
@@ -235,7 +235,7 @@ class AppointmentProvider with ChangeNotifier {
   
   // Stream messages for a chat
   Stream<List<Message>> streamMessages(String chatId) {
-    return Message.getChatMessages(chatId);
+    return Message.streamMessagesForChat(chatId);
   }
   
   // Fetch user notifications
@@ -254,7 +254,7 @@ class AppointmentProvider with ChangeNotifier {
       final userId = currentUserId!;
       final notificationsData = await _appointmentService.getUserNotifications(userId);
       
-      _notifications = notificationsData.map((data) => NotificationModel.fromMap(data)).toList();
+      _notifications = notificationsData.map((data) => AppNotification.fromMap(data)).toList();
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -282,7 +282,7 @@ class AppointmentProvider with ChangeNotifier {
       if (_notifications != null) {
         final index = _notifications!.indexWhere((n) => n.id == notificationId);
         if (index != -1) {
-          _notifications![index] = _notifications![index].copyWith(read: true);
+          _notifications![index] = _notifications![index].copyWith(isRead: true);
           notifyListeners();
         }
       }
@@ -314,7 +314,7 @@ class AppointmentProvider with ChangeNotifier {
             })
           ).toList();
           
-          _appointments!.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+          _appointments!.sort((a, b) => a.date.compareTo(b.date));
           notifyListeners();
         } else {
           _appointments = [];
@@ -357,13 +357,15 @@ class AppointmentProvider with ChangeNotifier {
         if (event.snapshot.exists) {
           final data = event.snapshot.value as Map<dynamic, dynamic>;
           _notifications = data.entries.map((entry) => 
-            NotificationModel.fromMap({
+            AppNotification.fromMap({
               'id': entry.key,
               ...Map<String, dynamic>.from(entry.value as Map),
             })
           ).toList();
           
-          _notifications!.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          if (_notifications != null && _notifications!.isNotEmpty) {
+            _notifications!.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          }
           notifyListeners();
         } else {
           _notifications = [];

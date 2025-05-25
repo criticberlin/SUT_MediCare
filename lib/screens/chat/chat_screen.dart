@@ -60,7 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _chatId = participants.join('_');
 
     // Listen to messages using the Message model's method
-    Message.getChatMessages(_chatId!).listen((messages) {
+    Message.streamMessagesForChat(_chatId!).listen((messages) {
       setState(() {
         _messages = messages;
       });
@@ -73,8 +73,8 @@ class _ChatScreenState extends State<ChatScreen> {
     if (currentUserId == null) return;
     
     for (final message in _messages) {
-      if (!message.read && message.senderId != currentUserId) {
-        await message.markAsRead();
+      if (!message.isRead && message.senderId != currentUserId) {
+        await message.markAsReadBy(currentUserId);
       }
     }
   }
@@ -87,10 +87,10 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUserId = _auth.currentUser?.uid;
     if (currentUserId == null) return;
 
-    await Message.sendMessage(
+    await Message.createMessage(
       chatId: _chatId!,
       senderId: currentUserId,
-      text: _messageController.text.trim(),
+      content: _messageController.text.trim(),
     );
     
     _messageController.clear();
@@ -274,7 +274,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final isSent = message.senderId == currentUserId;
     
     // Check if message has an attachment (image)
-    final bool hasAttachment = message.attachment != null && message.attachment!.isNotEmpty;
+    final bool hasAttachment = message.type != 'text';
     
     if (hasAttachment) {
       return _buildImageMessage(message, isSent, showAvatar, isDarkMode);
@@ -335,7 +335,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
-                        _formatTime(message.createdAt),
+                        _formatTime(message.timestamp.millisecondsSinceEpoch),
                         style: TextStyle(
                           color: isDarkMode 
                               ? AppTheme.darkTextSecondaryColor.withValues(red: null, green: null, blue: null, alpha: 0.7) 
@@ -346,7 +346,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ],
                   Text(
-                    message.text,
+                    message.content,
                     style: TextStyle(
                       color: isSent 
                           ? Colors.white 
@@ -362,7 +362,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            _formatTime(message.createdAt),
+                            _formatTime(message.timestamp.millisecondsSinceEpoch),
                             style: TextStyle(
                               color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                               fontSize: 10,
@@ -370,7 +370,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           const SizedBox(width: 4),
                           Icon(
-                            message.read ? Icons.done_all : Icons.done,
+                            message.isRead ? Icons.done_all : Icons.done,
                             size: 12,
                             color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                           ),
@@ -445,7 +445,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      message.attachment!,
+                      message.content,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       errorBuilder: (context, error, stackTrace) {
@@ -471,7 +471,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _formatTime(message.createdAt),
+                          _formatTime(message.timestamp.millisecondsSinceEpoch),
                           style: TextStyle(
                             color: isSent 
                                 ? Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7) 
@@ -484,7 +484,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         if (isSent) ...[
                           const SizedBox(width: 4),
                           Icon(
-                            message.read ? Icons.done_all : Icons.done,
+                            message.isRead ? Icons.done_all : Icons.done,
                             size: 12,
                             color: Colors.white.withValues(red: 255, green: 255, blue: 255, alpha: 0.7),
                           ),

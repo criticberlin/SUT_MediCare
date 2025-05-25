@@ -100,23 +100,36 @@ class _PatientProfileFormState extends State<PatientProfileForm> {
       setState(() {
         _isLoading = true;
       });
-      
+
       try {
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         String userId;
         
         // If this is a new registration, create the user first
         if (_isNewRegistration) {
-          // Create user in Firebase Auth
-          final userCredential = await firebase_auth.FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: _registrationData['email'],
-            password: _registrationData['password'],
-          );
-          
-          userId = userCredential.user!.uid;
-          
-          // Update display name
-          await userCredential.user?.updateDisplayName(_nameController.text);
+          try {
+            // Create user using the auth provider instead of directly
+            final success = await authProvider.register(
+              _registrationData['email'],
+              _registrationData['password'],
+              _nameController.text,
+              'Patient',
+            );
+            
+            if (!success) {
+              throw Exception('Failed to register user');
+            }
+            
+            // Get the current user ID from Firebase Auth
+            final currentUser = firebase_auth.FirebaseAuth.instance.currentUser;
+            if (currentUser == null) {
+              throw Exception('Failed to get current user after registration');
+            }
+            
+            userId = currentUser.uid;
+          } catch (e) {
+            throw Exception('Failed to register: ${e.toString()}');
+          }
         } else {
           // Use existing user ID
           userId = _existingUser!.id;
@@ -135,38 +148,38 @@ class _PatientProfileFormState extends State<PatientProfileForm> {
           'role': 'Patient',
           'phone': _phoneController.text,
           'address': _addressController.text,
-          'dateOfBirth': _dateOfBirth?.toIso8601String(),
+          'height': _heightController.text.isNotEmpty ? double.parse(_heightController.text) : 0,
+          'weight': _weightController.text.isNotEmpty ? double.parse(_weightController.text) : 0,
+          'dateOfBirth': _dateOfBirth != null ? DateFormat('yyyy-MM-dd').format(_dateOfBirth!) : null,
           'gender': _gender,
           'bloodType': _bloodType,
-          'height': double.tryParse(_heightController.text),
-          'weight': double.tryParse(_weightController.text),
           'allergies': _allergies,
           'medications': _medications,
-          'chronicConditions': _chronicConditions,
+          'isVerified': true, // Patients don't need verification
           'isProfileComplete': true,
-          'createdAt': _isNewRegistration ? ServerValue.timestamp : null,
           'updatedAt': ServerValue.timestamp,
         };
         
-        // Remove null values to avoid overwriting existing data
-        userData.removeWhere((key, value) => value == null);
+        // Update user data in both locations - use set instead of update to ensure complete data
+        await userRef.set(userData);
+        await flatUserRef.set(userData);
         
-        // Update user data in both locations
-        await userRef.update(userData);
-        await flatUserRef.update(userData);
-        
-        // If this is not a new registration, mark profile as complete using the AuthProvider
-        if (!_isNewRegistration) {
-          await authProvider.markProfileComplete();
-        } else {
-          // For new registration, sign in the user now
+        // If this is a new registration, sign in the user
+        if (_isNewRegistration) {
           await authProvider.signIn(
             _registrationData['email'],
             _registrationData['password'],
           );
+        } else {
+          // Mark profile as complete for existing users
+          await authProvider.markProfileComplete();
         }
         
         if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Profile saved successfully'),
@@ -178,20 +191,18 @@ class _PatientProfileFormState extends State<PatientProfileForm> {
           Navigator.of(context).pushReplacementNamed(AppRoutes.home);
         }
       } catch (e) {
-        print('Error saving profile: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error saving profile: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } finally {
+        // Handle errors properly
         if (mounted) {
           setState(() {
             _isLoading = false;
           });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error saving profile: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }

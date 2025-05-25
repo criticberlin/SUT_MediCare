@@ -398,10 +398,10 @@ class _HomeScreenState extends State<HomeScreen> {
       print('Error finding doctor: $e');
     }
 
-    // Format the date and time from dateTime
-    final date = DateTime.parse(appointment.dateTime.toString());
+    // Format the date and time from date
+    final date = appointment.date;
     final formattedDate = "${date.day}/${date.month}/${date.year}";
-    final formattedTime = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+    final formattedTime = appointment.timeSlot;
     
     // Convert string status to AppointmentStatus enum
     app_models.AppointmentStatus statusEnum;
