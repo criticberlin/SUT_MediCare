@@ -142,6 +142,7 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
         // If this is a new registration, create the user first
         if (_isNewRegistration) {
           try {
+            print('Starting registration for doctor profile...');
             // Create user using the auth provider instead of directly
             final success = await authProvider.register(
               _registrationData['email'],
@@ -161,6 +162,7 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
             }
             
             userId = currentUser.uid;
+            print('User created with ID: $userId');
           } catch (e) {
             throw Exception('Failed to register: ${e.toString()}');
           }
@@ -219,12 +221,27 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
           'services': _services,
           'reviews': [],
           'isOnline': false,
+          // Add additional fields to match Doctor model
+          'qualifications': _qualificationsController.text,
+          'licenseNumber': _licenseNumberController.text,
+          'consultationFee': _consultationFeeController.text.isNotEmpty ? double.parse(_consultationFeeController.text) : 0.0,
+          'languages': _languages,
+          'acceptedInsurance': _acceptedInsurance,
+          'phone': _phoneController.text,
+          'email': _isNewRegistration ? _registrationData['email'] : _existingUser!.email,
         };
+        
+        print('Saving doctor profile data to database...');
         
         // Update user data in both locations - use set instead of update for complete replacement
         await userRef.set(userData);
+        print('Saved to users/Doctors/$userId');
+        
         await flatUserRef.set(userData);
+        print('Saved to users/$userId');
+        
         await doctorRef.set(doctorData);
+        print('Saved to doctors/$userId');
         
         // If this is a new registration, sign in the user
         if (_isNewRegistration) {
@@ -232,9 +249,11 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
             _registrationData['email'],
             _registrationData['password'],
           );
+          print('Signed in user after registration');
         } else {
           // Mark profile as complete for existing users
           await authProvider.markProfileComplete();
+          print('Marked profile as complete for existing user');
         }
         
         if (mounted) {
@@ -253,6 +272,7 @@ class _DoctorProfileFormState extends State<DoctorProfileForm> {
           Navigator.of(context).pushReplacementNamed(AppRoutes.home);
         }
       } catch (e) {
+        print('Error saving profile: ${e.toString()}');
         // Handle errors properly
         if (mounted) {
           setState(() {
