@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
-enum AppointmentStatus { upcoming, completed, cancelled }
+import '../models/appointment.dart' as app_models;
+import '../utils/theme/app_theme.dart';
 
 class AppointmentCard extends StatelessWidget {
   final String doctorName;
@@ -8,7 +8,7 @@ class AppointmentCard extends StatelessWidget {
   final String doctorImage;
   final DateTime appointmentDate;
   final String appointmentTime;
-  final AppointmentStatus status;
+  final app_models.AppointmentStatus status;
   final VoidCallback onTap;
 
   const AppointmentCard({
@@ -164,11 +164,11 @@ class AppointmentCard extends StatelessWidget {
     final theme = Theme.of(context);
     
     switch (status) {
-      case AppointmentStatus.upcoming:
+      case app_models.AppointmentStatus.upcoming:
         return theme.colorScheme.primary;
-      case AppointmentStatus.completed:
+      case app_models.AppointmentStatus.completed:
         return Colors.green;
-      case AppointmentStatus.cancelled:
+      case app_models.AppointmentStatus.cancelled:
         return Colors.red;
     }
   }
@@ -234,17 +234,17 @@ class AppointmentCard extends StatelessWidget {
     IconData statusIcon;
     
     switch (status) {
-      case AppointmentStatus.upcoming:
+      case app_models.AppointmentStatus.upcoming:
         chipColor = theme.colorScheme.primary;
         statusText = 'Upcoming';
         statusIcon = Icons.access_time_rounded;
         break;
-      case AppointmentStatus.completed:
+      case app_models.AppointmentStatus.completed:
         chipColor = Colors.green;
         statusText = 'Completed';
         statusIcon = Icons.check_circle_outline_rounded;
         break;
-      case AppointmentStatus.cancelled:
+      case app_models.AppointmentStatus.cancelled:
         chipColor = Colors.red;
         statusText = 'Cancelled';
         statusIcon = Icons.cancel_outlined;
@@ -290,7 +290,7 @@ class AppointmentCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
     
-    if (status != AppointmentStatus.upcoming) {
+    if (status != app_models.AppointmentStatus.upcoming) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

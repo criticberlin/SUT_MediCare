@@ -1,3 +1,5 @@
+import 'package:firebase_database/firebase_database.dart';
+
 class Doctor {
   final String id;
   final String name;
@@ -31,131 +33,75 @@ class Doctor {
     this.isOnline = false,
   });
 
-  // Dummy data for doctor list
-  static List<Doctor> getDummyDoctors() {
-    return [
-      Doctor(
-        id: '1',
-        name: 'Ahmed Kamal',
-        specialty: 'Orthopedic Surgeon',
-        imageUrl: 'https://img.freepik.com/free-photo/smiling-doctor-with-strethoscope-isolated-grey_651396-974.jpg',
-        rating: 4.9,
-        experience: 12,
-        hospital: 'Cairo University Hospital',
-        patients: 1500,
-        about: 'Dr. Ahmed Kamal is a board-certified orthopedic surgeon with 12+ years experience specializing in sports medicine and joint replacement surgery.',
-        address: '15 Al-Saraya St, Cairo, Egypt',
-        workingHours: ['Sun-Thu, 9:00 AM - 5:00 PM', 'Sat, 9:00 AM - 1:00 PM'],
-        services: ['Joint Replacement', 'Sports Medicine', 'Arthroscopy', 'Trauma Care'],
-        reviews: [
-          Review(
-            userName: 'Amira Hassan',
-            rating: 5.0,
-            comment: 'Dr. Kamal is excellent! Very professional and caring.',
-            date: DateTime.now().subtract(const Duration(days: 5)),
-          ),
-          Review(
-            userName: 'Mohamed Salah',
-            rating: 4.8,
-            comment: 'Great experience. He explained everything clearly.',
-            date: DateTime.now().subtract(const Duration(days: 12)),
-          ),
-        ],
-        isOnline: true,
-      ),
-      Doctor(
-        id: '2',
-        name: 'Nour El-Sayed',
-        specialty: 'Neurosurgeon',
-        imageUrl: 'https://img.freepik.com/free-photo/portrait-female-doctor-holding-plus-window_23-2150572356.jpg',
-        rating: 4.8,
-        experience: 8,
-        hospital: 'Ain Shams University Hospital',
-        patients: 900,
-        about: 'Dr. Nour El-Sayed is a neurosurgeon specializing in brain tumors, spine disorders, and neurological trauma with 8 years of practice.',
-        address: '23 Ramses St, Cairo, Egypt',
-        workingHours: ['Sun-Thu, 8:00 AM - 4:00 PM', 'Sat, 8:00 AM - 12:00 PM'],
-        services: ['Brain Surgery', 'Spine Surgery', 'Neurological Consultation', 'Trauma Care'],
-        reviews: [
-          Review(
-            userName: 'Omar Ibrahim',
-            rating: 4.9,
-            comment: 'Dr. El-Sayed is the best! She has an excellent bedside manner.',
-            date: DateTime.now().subtract(const Duration(days: 8)),
-          ),
-        ],
-        isOnline: false,
-      ),
-      Doctor(
-        id: '3',
-        name: 'Tarek Mahmoud',
-        specialty: 'Infectious Diseases',
-        imageUrl: 'https://img.freepik.com/free-photo/doctor-smiling-offering-handshake_23-2148085248.jpg',
-        rating: 4.7,
-        experience: 15,
-        hospital: 'Al-Azhar University Hospital',
-        patients: 2200,
-        about: 'Dr. Tarek Mahmoud is an infectious disease specialist with 15 years of experience treating complex infections, tropical diseases, and managing public health initiatives.',
-        address: '78 Qasr Al-Ainy St, Cairo, Egypt',
-        workingHours: ['Sun-Thu, 9:00 AM - 6:00 PM'],
-        services: ['Infectious Disease Treatment', 'Travel Medicine', 'HIV/AIDS Care', 'Vaccination'],
-        reviews: [
-          Review(
-            userName: 'Layla Farouk',
-            rating: 4.7,
-            comment: 'Very knowledgeable and thorough with his diagnoses.',
-            date: DateTime.now().subtract(const Duration(days: 20)),
-          ),
-        ],
-        isOnline: true,
-      ),
-      Doctor(
-        id: '4',
-        name: 'Kareem Hossam',
-        specialty: 'Cardiologist',
-        imageUrl: 'https://img.freepik.com/free-photo/male-nurse-with-stethoscope-uniform_23-2148124598.jpg',
-        rating: 4.9,
-        experience: 20,
-        hospital: 'Alexandria University Hospital',
-        patients: 3000,
-        about: 'Dr. Kareem Hossam is a renowned cardiologist specializing in minimally invasive cardiac procedures and heart health with 20 years of practice.',
-        address: '45 Al-Horreya Road, Alexandria, Egypt',
-        workingHours: ['Sun-Wed, 7:00 AM - 3:00 PM', 'Thu, 7:00 AM - 12:00 PM'],
-        services: ['Cardiac Surgery', 'Heart Treatments', 'Valve Repair', 'Coronary Care'],
-        reviews: [
-          Review(
-            userName: 'Youssef Nader',
-            rating: 5.0,
-            comment: 'Dr. Hossam saved my life. Exceptional doctor!',
-            date: DateTime.now().subtract(const Duration(days: 30)),
-          ),
-        ],
-        isOnline: false,
-      ),
-      Doctor(
-        id: '5',
-        name: 'Yasmine Adel',
-        specialty: 'Ophthalmologist',
-        imageUrl: 'https://img.freepik.com/free-photo/female-doctor-hospital-with-stethoscope_23-2148827772.jpg',
-        rating: 4.5,
-        experience: 10,
-        hospital: 'Maadi Military Hospital',
-        patients: 800,
-        about: 'Dr. Yasmine Adel is an ophthalmologist focusing on retinal disorders, glaucoma treatment, and pediatric eye care with 10 years of experience.',
-        address: '12 Maadi Corniche, Cairo, Egypt',
-        workingHours: ['Sun-Thu, 8:30 AM - 5:30 PM', 'Sat, 9:00 AM - 1:00 PM'],
-        services: ['Eye Examinations', 'Cataract Surgery', 'Pediatric Eye Care', 'Laser Treatments'],
-        reviews: [
-          Review(
-            userName: 'Heba Ahmed',
-            rating: 4.5,
-            comment: 'Dr. Adel is very detailed and spent a lot of time explaining my condition.',
-            date: DateTime.now().subtract(const Duration(days: 15)),
-          ),
-        ],
-        isOnline: true,
-      ),
-    ];
+  // Convert Doctor object to Map
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'specialty': specialty,
+      'imageUrl': imageUrl,
+      'rating': rating,
+      'experience': experience,
+      'hospital': hospital,
+      'patients': patients,
+      'about': about,
+      'address': address,
+      'workingHours': workingHours,
+      'services': services,
+      'reviews': reviews.map((review) => review.toMap()).toList(),
+      'isOnline': isOnline,
+    };
+  }
+
+  // Create Doctor object from Map
+  factory Doctor.fromMap(Map<String, dynamic> map) {
+    return Doctor(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      specialty: map['specialty'] ?? '',
+      imageUrl: map['imageUrl'] ?? '',
+      rating: (map['rating'] ?? 0.0).toDouble(),
+      experience: map['experience'] ?? 0,
+      hospital: map['hospital'] ?? '',
+      patients: map['patients'] ?? 0,
+      about: map['about'] ?? '',
+      address: map['address'] ?? '',
+      workingHours: List<String>.from(map['workingHours'] ?? []),
+      services: List<String>.from(map['services'] ?? []),
+      reviews: (map['reviews'] as List<dynamic>?)
+          ?.map((review) => Review.fromMap(review))
+          .toList() ?? [],
+      isOnline: map['isOnline'] ?? false,
+    );
+  }
+
+  // Get all doctors from Firebase
+  static Future<List<Doctor>> getAllDoctors() async {
+    final database = FirebaseDatabase.instance;
+    final doctorsRef = database.ref('doctors');
+    final snapshot = await doctorsRef.get();
+    
+    if (snapshot.exists) {
+      final List<Doctor> doctors = [];
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      data.forEach((key, value) {
+        doctors.add(Doctor.fromMap(Map<String, dynamic>.from(value)));
+      });
+      return doctors;
+    }
+    return [];
+  }
+
+  // Get a single doctor by ID
+  static Future<Doctor?> getDoctorById(String id) async {
+    final database = FirebaseDatabase.instance;
+    final doctorRef = database.ref('doctors/$id');
+    final snapshot = await doctorRef.get();
+    
+    if (snapshot.exists) {
+      return Doctor.fromMap(Map<String, dynamic>.from(snapshot.value as Map));
+    }
+    return null;
   }
 }
 
@@ -171,4 +117,22 @@ class Review {
     required this.comment,
     required this.date,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userName': userName,
+      'rating': rating,
+      'comment': comment,
+      'date': date.toIso8601String(),
+    };
+  }
+
+  factory Review.fromMap(Map<String, dynamic> map) {
+    return Review(
+      userName: map['userName'] ?? '',
+      rating: (map['rating'] ?? 0.0).toDouble(),
+      comment: map['comment'] ?? '',
+      date: DateTime.parse(map['date'] ?? DateTime.now().toIso8601String()),
+    );
+  }
 } 

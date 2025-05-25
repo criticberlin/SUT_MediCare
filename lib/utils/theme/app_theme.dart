@@ -25,22 +25,19 @@ class AppTheme {
   // Theme data
   static ThemeData get lightTheme {
     return ThemeData(
-      primaryColor: primaryColor,
-      colorScheme: ColorScheme.light(
-        primary: primaryColor,
-        secondary: secondaryColor,
-        surface: backgroundColor,
-        error: errorColor,
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primaryColor,
+        brightness: Brightness.light,
       ),
+      primaryColor: primaryColor,
       scaffoldBackgroundColor: backgroundColor,
-      cardTheme: CardTheme(
-        color: cardColor,
-        elevation: 0, // Modern cards have less elevation
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+      cardTheme: CardThemeData(
+        elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
+          borderRadius: BorderRadius.circular(12),
         ),
-        shadowColor: shadowColor,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: backgroundColor,
@@ -60,7 +57,7 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24), // More rounded buttons
+            borderRadius: BorderRadius.circular(24),
           ),
           textStyle: const TextStyle(
             fontSize: 16,
@@ -82,7 +79,7 @@ class AppTheme {
         fillColor: const Color(0xFFF7F8F9),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24), // More rounded input fields
+          borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
@@ -164,22 +161,19 @@ class AppTheme {
   // Dark Theme data
   static ThemeData get darkTheme {
     return ThemeData(
-      primaryColor: primaryColor,
-      colorScheme: ColorScheme.dark(
-        primary: primaryColor,
-        secondary: accentColor,
-        surface: darkCardColor,
-        error: errorColor,
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primaryColor,
+        brightness: Brightness.dark,
       ),
+      primaryColor: primaryColor,
       scaffoldBackgroundColor: darkBackgroundColor,
-      cardTheme: CardTheme(
-        color: darkCardColor,
-        elevation: 0,
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+      cardTheme: CardThemeData(
+        elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
+          borderRadius: BorderRadius.circular(12),
         ),
-        shadowColor: darkShadowColor,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: darkBackgroundColor,

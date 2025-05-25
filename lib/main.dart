@@ -1,8 +1,14 @@
-import 'package:flutter/material.dart';
+  import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'firebase_options.dart'; // ✅ Added
+
 import 'utils/theme/app_theme.dart';
 import 'utils/theme/theme_provider.dart';
+import 'providers/auth_provider.dart';
 import 'routes.dart';
+import 'models/user.dart' as app_user;
 
 // Screens
 import 'screens/splash_screen.dart';
@@ -25,12 +31,38 @@ import 'screens/notifications/notifications_screen.dart';
 
 // Models
 import 'models/doctor.dart';
-import 'models/user.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Test Firebase connection
+  try {
+    final database = FirebaseDatabase.instance;
+    // Set the database URL explicitly to the correct URL
+    database.databaseURL = 'https://medicare-app-final-default-rtdb.firebaseio.com';
+    // Test with a simple write operation
+    await database.ref('test').set({'timestamp': ServerValue.timestamp});
+    print('Firebase connection successful!');
+    // Clean up test data
+    await database.ref('test').remove();
+  } catch (e) {
+    print('Firebase connection error: $e');
+    if (e.toString().contains('permission-denied')) {
+      print('Database rules may be too restrictive. Please check your Firebase Console database rules.');
+    } else if (e.toString().contains('invalid-token')) {
+      print('Authentication token is invalid. Please check your Firebase configuration.');
+    }
+  }
+
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -50,29 +82,17 @@ class MyApp extends StatelessWidget {
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case AppRoutes.splash:
-            return MaterialPageRoute(
-              builder: (_) => const SplashScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const SplashScreen());
           case AppRoutes.onboarding:
-            return MaterialPageRoute(
-              builder: (_) => const OnboardingScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const OnboardingScreen());
           case AppRoutes.login:
-            return MaterialPageRoute(
-              builder: (_) => const LoginScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const LoginScreen());
           case AppRoutes.register:
-            return MaterialPageRoute(
-              builder: (_) => const RegisterScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const RegisterScreen());
           case AppRoutes.home:
-            return MaterialPageRoute(
-              builder: (_) => const HomeScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const HomeScreen());
           case AppRoutes.doctorList:
-            return MaterialPageRoute(
-              builder: (_) => const Placeholder(), // Will be implemented later
-            );
+            return MaterialPageRoute(builder: (_) => const Placeholder());
           case AppRoutes.doctorDetail:
             return MaterialPageRoute(
               builder: (_) => DoctorDetailScreen(
@@ -86,9 +106,7 @@ class MyApp extends StatelessWidget {
               ),
             );
           case AppRoutes.appointmentHistory:
-            return MaterialPageRoute(
-              builder: (_) => const Placeholder(), // Will be implemented later
-            );
+            return MaterialPageRoute(builder: (_) => const Placeholder());
           case AppRoutes.chat:
             return MaterialPageRoute(
               builder: (_) => ChatScreen(
@@ -96,9 +114,7 @@ class MyApp extends StatelessWidget {
               ),
             );
           case AppRoutes.chatList:
-            return MaterialPageRoute(
-              builder: (_) => const ChatListScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const ChatListScreen());
           case AppRoutes.videoCall:
             return MaterialPageRoute(
               builder: (_) => VideoCallScreen(
@@ -106,39 +122,28 @@ class MyApp extends StatelessWidget {
               ),
             );
           case AppRoutes.prescriptionUpload:
-            return MaterialPageRoute(
-              builder: (_) => const Placeholder(), // Will be implemented later
-            );
+            return MaterialPageRoute(builder: (_) => const Placeholder());
           case AppRoutes.profile:
-            return MaterialPageRoute(
-              builder: (_) => const ProfileScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const ProfileScreen());
           case AppRoutes.notifications:
-            return MaterialPageRoute(
-              builder: (_) => const NotificationsScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const NotificationsScreen());
           case AppRoutes.settings:
-            return MaterialPageRoute(
-              builder: (_) => const SettingsScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const SettingsScreen());
           case AppRoutes.editProfile:
+            final user = settings.arguments as app_user.User?;
+            if (user == null) {
+              // If no user is provided, navigate to profile screen instead
+              return MaterialPageRoute(builder: (_) => const ProfileScreen());
+            }
             return MaterialPageRoute(
-              builder: (_) => EditProfileScreen(
-                user: settings.arguments as User? ?? User.getCurrentUser(),
-              ),
+              builder: (_) => EditProfileScreen(user: user),
             );
           case AppRoutes.medicalHistory:
-            return MaterialPageRoute(
-              builder: (_) => const MedicalHistoryScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const MedicalHistoryScreen());
           case AppRoutes.paymentMethods:
-            return MaterialPageRoute(
-              builder: (_) => const PaymentMethodsScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const PaymentMethodsScreen());
           case AppRoutes.helpSupport:
-            return MaterialPageRoute(
-              builder: (_) => const HelpSupportScreen(),
-            );
+            return MaterialPageRoute(builder: (_) => const HelpSupportScreen());
           default:
             return MaterialPageRoute(
               builder: (_) => const Scaffold(

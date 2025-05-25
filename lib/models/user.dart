@@ -1,8 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_database/firebase_database.dart';
+
 class User {
   final String id;
   final String name;
   final String email;
+  final String role;
   final String? phone;
+  final String? address;
   final String? profileImage;
   final String? dateOfBirth;
   final String? gender;
@@ -17,7 +22,9 @@ class User {
     required this.id,
     required this.name,
     required this.email,
+    required this.role,
     this.phone,
+    this.address,
     this.profileImage,
     this.dateOfBirth,
     this.gender,
@@ -29,23 +36,111 @@ class User {
     this.chronicConditions,
   });
 
-  // Mock current user data
-  static User getCurrentUser() {
+  // Convert User object to Map
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'role': role,
+      'phone': phone,
+      'address': address,
+      'profileImage': profileImage,
+      'dateOfBirth': dateOfBirth,
+      'gender': gender,
+      'bloodType': bloodType,
+      'height': height,
+      'weight': weight,
+      'allergies': allergies,
+      'medications': medications,
+      'chronicConditions': chronicConditions,
+    };
+  }
+
+  // Create User object from Map
+  factory User.fromMap(Map<String, dynamic> map) {
     return User(
-      id: 'user1',
-      name: 'Mohamed Ahmed',
-      email: 'mohamed.ahmed@gmail.com',
-      phone: '+20 1015183968',
-      profileImage: 'https://img.freepik.com/free-photo/handsome-bearded-businessman-rubbing-hands-having-deal_176420-18778.jpg',
-      dateOfBirth: '2005-08-17',
-      gender: 'Male',
-      bloodType: 'O+',
-      height: 175.0,
-      weight: 70.5,
-      allergies: ['Penicillin', 'Peanuts'],
-      medications: ['Lisinopril', 'Vitamin D'],
-      chronicConditions: ['Hypertension'],
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      role: map['role'] ?? 'patient',
+      phone: map['phone'],
+      address: map['address'],
+      profileImage: map['profileImage'],
+      dateOfBirth: map['dateOfBirth'],
+      gender: map['gender'],
+      bloodType: map['bloodType'],
+      height: map['height']?.toDouble(),
+      weight: map['weight']?.toDouble(),
+      allergies: map['allergies'] != null ? List<String>.from(map['allergies']) : null,
+      medications: map['medications'] != null ? List<String>.from(map['medications']) : null,
+      chronicConditions: map['chronicConditions'] != null ? List<String>.from(map['chronicConditions']) : null,
     );
+  }
+
+  // Get current user from Firebase Auth and Database
+  static Future<User?> getCurrentUser() async {
+    try {
+      final firebase_auth.FirebaseAuth auth = firebase_auth.FirebaseAuth.instance;
+      final FirebaseDatabase database = FirebaseDatabase.instance;
+      
+      final firebase_auth.User? firebaseUser = auth.currentUser;
+      if (firebaseUser == null) {
+        print('No Firebase user found');
+        return null;
+      }
+
+      print('Fetching user data for: ${firebaseUser.uid}');
+      final DatabaseEvent event = await database.ref('users/${firebaseUser.uid}').once();
+      
+      if (!event.snapshot.exists) {
+        print('No user data found in database');
+        return null;
+      }
+
+      final Map<dynamic, dynamic>? data = event.snapshot.value as Map<dynamic, dynamic>?;
+      if (data == null) {
+        print('User data is null');
+        return null;
+      }
+
+      print('User data retrieved: $data');
+      final user = User.fromMap({
+        'id': firebaseUser.uid,
+        ...data,
+      });
+      print('User object created successfully');
+      return user;
+    } catch (e) {
+      print('Error getting current user: $e');
+      return null;
+    }
+  }
+
+  // Stream user data changes
+  static Stream<User?> streamUserData() {
+    final firebase_auth.FirebaseAuth auth = firebase_auth.FirebaseAuth.instance;
+    final FirebaseDatabase database = FirebaseDatabase.instance;
+    
+    return auth.authStateChanges().asyncMap((firebaseUser) async {
+      if (firebaseUser == null) return null;
+
+      try {
+        final DatabaseEvent event = await database.ref('users/${firebaseUser.uid}').once();
+        if (!event.snapshot.exists) return null;
+
+        final Map<dynamic, dynamic>? data = event.snapshot.value as Map<dynamic, dynamic>?;
+        if (data == null) return null;
+
+        return User.fromMap({
+          'id': firebaseUser.uid,
+          ...data,
+        });
+      } catch (e) {
+        print('Error streaming user data: $e');
+        return null;
+      }
+    });
   }
 
   // Create a copy of the user with updated values
@@ -53,7 +148,9 @@ class User {
     String? id,
     String? name,
     String? email,
+    String? role,
     String? phone,
+    String? address,
     String? profileImage,
     String? dateOfBirth,
     String? gender,
@@ -68,7 +165,9 @@ class User {
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
+      role: role ?? this.role,
       phone: phone ?? this.phone,
+      address: address ?? this.address,
       profileImage: profileImage ?? this.profileImage,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,
@@ -79,5 +178,23 @@ class User {
       medications: medications ?? this.medications,
       chronicConditions: chronicConditions ?? this.chronicConditions,
     );
+  }
+
+  // Save user data to Firebase
+  Future<void> save() async {
+    final database = FirebaseDatabase.instance;
+    await database.ref('users/$id').set(toMap());
+  }
+
+  // Update user data in Firebase
+  Future<void> update() async {
+    final database = FirebaseDatabase.instance;
+    await database.ref('users/$id').update(toMap());
+  }
+
+  // Delete user data from Firebase
+  Future<void> delete() async {
+    final database = FirebaseDatabase.instance;
+    await database.ref('users/$id').remove();
   }
 } 

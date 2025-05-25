@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/doctor.dart';
-import '../../models/appointment.dart';
-import '../../models/user.dart';
+import '../../models/appointment.dart' as app_models;
+import '../../models/user.dart' as app_user;
 import '../../utils/theme/app_theme.dart';
 import '../../utils/theme/theme_provider.dart';
 import '../../routes.dart';
 import '../../widgets/doctor_card.dart';
 import '../../widgets/appointment_card.dart';
 import '../../utils/extensions.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_database/firebase_database.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,9 +21,57 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  final User _currentUser = User.getCurrentUser();
-  final List<Doctor> _doctors = Doctor.getDummyDoctors();
-  final List<Appointment> _appointments = Appointment.getDummyAppointments();
+  app_user.User? _currentUser;
+  List<Doctor> _doctors = [];
+  List<app_models.Appointment> _appointments = [];
+  bool _isLoading = true;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load current user
+      final user = await app_user.User.getCurrentUser();
+      if (user != null) {
+        setState(() {
+          _currentUser = user;
+        });
+      }
+
+      // Load doctors
+      final doctors = await Doctor.getAllDoctors();
+      setState(() {
+        _doctors = doctors;
+      });
+
+      // Load appointments
+      if (_currentUser != null) {
+        final appointmentsStream = app_models.Appointment.getUserAppointments();
+        appointmentsStream.listen((appointments) {
+          setState(() {
+            _appointments = appointments;
+          });
+        });
+      }
+    } catch (e) {
+      print('Error loading data: $e');
+      // Handle error appropriately
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -244,11 +294,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildUpcomingAppointmentsSection() {
     final upcomingAppointments = _appointments
-        .where((appointment) => appointment.status == AppointmentStatus.upcoming)
+        .where((appointment) => appointment.status == app_models.AppointmentStatus.upcoming)
         .toList();
     
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     if (upcomingAppointments.isEmpty) {
       return Column(
@@ -320,28 +374,32 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         ...upcomingAppointments.take(2).map((appointment) {
-          return AppointmentCard(
-            doctorName: appointment.doctorName,
-            doctorSpecialty: appointment.doctorSpecialty,
-            doctorImage: appointment.doctorImage,
-            appointmentDate: appointment.date,
-            appointmentTime: appointment.time,
-            status: appointment.status,
-            onTap: () {
-              final doctor = _getDoctorFromAppointment(appointment);
-              Navigator.pushNamed(
-                context,
-                AppRoutes.appointmentBooking,
-                arguments: doctor,
-              );
-            },
-          );
+          return _buildAppointmentCard(appointment);
         }),
       ],
     );
   }
 
-  Doctor _getDoctorFromAppointment(Appointment appointment) {
+  Widget _buildAppointmentCard(app_models.Appointment appointment) {
+    return AppointmentCard(
+      doctorName: appointment.doctorName,
+      doctorSpecialty: appointment.doctorSpecialty,
+      doctorImage: appointment.doctorImage,
+      appointmentDate: appointment.date,
+      appointmentTime: appointment.time,
+      status: appointment.status,
+      onTap: () {
+        final doctor = _getDoctorFromAppointment(appointment);
+        Navigator.pushNamed(
+          context,
+          AppRoutes.appointmentBooking,
+          arguments: doctor,
+        );
+      },
+    );
+  }
+
+  Doctor _getDoctorFromAppointment(app_models.Appointment appointment) {
     return _doctors.firstWhere(
       (doctor) => doctor.id == appointment.doctorId,
       orElse: () => _doctors.first,
@@ -670,9 +728,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: MediaQuery.of(context).size.height * 0.6,
                       child: TabBarView(
                         children: [
-                          _buildAppointmentList(AppointmentStatus.upcoming),
-                          _buildAppointmentList(AppointmentStatus.completed),
-                          _buildAppointmentList(AppointmentStatus.cancelled),
+                          _buildAppointmentList(app_models.AppointmentStatus.upcoming),
+                          _buildAppointmentList(app_models.AppointmentStatus.completed),
+                          _buildAppointmentList(app_models.AppointmentStatus.cancelled),
                         ],
                       ),
                     ),
@@ -686,7 +744,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAppointmentList(AppointmentStatus status) {
+  Widget _buildAppointmentList(app_models.AppointmentStatus status) {
     final theme = Theme.of(context);
     
     final filteredAppointments = _appointments
@@ -720,7 +778,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'No ${status.name.capitalize()} Appointments',
+              _getEmptyStatusMessage(status),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
@@ -736,7 +794,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            if (status == AppointmentStatus.upcoming)
+            if (status == app_models.AppointmentStatus.upcoming)
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pushNamed(context, AppRoutes.doctorList);
@@ -761,58 +819,49 @@ class _HomeScreenState extends State<HomeScreen> {
       itemBuilder: (context, index) {
         final appointment = filteredAppointments[index];
         
-        return AppointmentCard(
-          doctorName: appointment.doctorName,
-          doctorSpecialty: appointment.doctorSpecialty,
-          doctorImage: appointment.doctorImage,
-          appointmentDate: appointment.date,
-          appointmentTime: appointment.time,
-          status: appointment.status,
-          onTap: () {
-            final doctor = _getDoctorFromAppointment(appointment);
-            Navigator.pushNamed(
-              context,
-              AppRoutes.appointmentBooking,
-              arguments: doctor,
-            );
-          },
-        );
+        return _buildAppointmentCard(appointment);
       },
     );
   }
 
-  String _getEmptyStatusMessage(AppointmentStatus status) {
+  String _getEmptyStatusMessage(app_models.AppointmentStatus status) {
     switch (status) {
-      case AppointmentStatus.upcoming:
+      case app_models.AppointmentStatus.upcoming:
         return 'You don\'t have any upcoming appointments.\nBook a consultation with a specialist now!';
-      case AppointmentStatus.completed:
+      case app_models.AppointmentStatus.completed:
         return 'You haven\'t had any appointments yet.\nStart by booking your first consultation.';
-      case AppointmentStatus.cancelled:
+      case app_models.AppointmentStatus.cancelled:
         return 'You don\'t have any cancelled appointments.\nThis is where your cancelled appointments will appear.';
+      default:
+        return 'No appointments found';
     }
   }
 
-  IconData _getStatusIcon(AppointmentStatus status) {
+  IconData _getStatusIcon(app_models.AppointmentStatus status) {
     switch (status) {
-      case AppointmentStatus.upcoming:
+      case app_models.AppointmentStatus.upcoming:
         return Icons.access_time_rounded;
-      case AppointmentStatus.completed:
+      case app_models.AppointmentStatus.completed:
         return Icons.check_circle_outline_rounded;
-      case AppointmentStatus.cancelled:
+      case app_models.AppointmentStatus.cancelled:
         return Icons.cancel_outlined;
+      default:
+        return Icons.help_outline;
     }
   }
 
-  Color _getStatusColor(AppointmentStatus status) {
+  Color _getStatusColor(app_models.AppointmentStatus status) {
     final theme = Theme.of(context);
     
     switch (status) {
-      case AppointmentStatus.upcoming:
+      case app_models.AppointmentStatus.upcoming:
         return theme.colorScheme.primary;
-      case AppointmentStatus.completed:
+      case app_models.AppointmentStatus.completed:
         return Colors.green;
-      case AppointmentStatus.cancelled:
+      case app_models.AppointmentStatus.cancelled:
         return Colors.red;
+      default:
+        return theme.colorScheme.primary;
     }
   }
 
@@ -910,18 +959,18 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
               CircleAvatar(
                 radius: 60,
-                backgroundImage: _currentUser.profileImage != null
-                    ? NetworkImage(_currentUser.profileImage!)
+                backgroundImage: _currentUser?.profileImage != null
+                    ? NetworkImage(_currentUser!.profileImage!)
                     : const AssetImage('assets/images/default_profile.png') as ImageProvider,
               ),
               const SizedBox(height: 16),
               Text(
-                _currentUser.name,
+                _currentUser!.name,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 4),
               Text(
-                _currentUser.email,
+                _currentUser!.email,
                 style: TextStyle(
                   color: AppTheme.textSecondaryColor,
                 ),

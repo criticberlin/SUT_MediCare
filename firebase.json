@@ -1,0 +1,25 @@
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "medicareapp-56fa1",
+                    "appId": "1:310834065683:android:27d870e7dd1571a763aae6",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "medicareapp-56fa1",
+                    "configurations": {
+                        "android": "1:310834065683:android:27d870e7dd1571a763aae6",
+                        "ios": "1:310834065683:ios:d1cb38382220369763aae6",
+                        "macos": "1:310834065683:ios:d1cb38382220369763aae6",
+                        "web": "1:310834065683:web:e85143e36a586dd563aae6",
+                        "windows": "1:310834065683:web:120912fead88b80263aae6"
+                    }
+                }
+            }
+        }
+    }
+}

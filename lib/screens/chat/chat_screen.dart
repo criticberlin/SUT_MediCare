@@ -5,6 +5,8 @@ import '../../utils/theme/app_theme.dart';
 import '../../utils/theme/theme_provider.dart';
 import '../../routes.dart';
 import '../../models/doctor.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatScreen extends StatefulWidget {
   final String doctorId;
@@ -20,17 +22,19 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  late List<Message> _messages;
-  // ignore: unused_field
-  late ChatPreview _chatData;
+  List<Message> _messages = [];
+  late Doctor _doctor;
   bool _isAttachmentOpen = false;
   final ScrollController _scrollController = ScrollController();
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _chatId;
 
   @override
   void initState() {
     super.initState();
-    _loadMessages();
-    _loadChatData();
+    _loadDoctor();
+    _loadChat();
     
     // Scroll to bottom after frame is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -38,61 +42,61 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
+  Future<void> _loadDoctor() async {
+    final doctor = await Doctor.getDoctorById(widget.doctorId);
+    if (doctor != null) {
+      setState(() {
+        _doctor = doctor;
+      });
+    }
   }
 
-  void _loadMessages() {
-    _messages = Message.getDummyChatMessages(widget.doctorId);
+  Future<void> _loadChat() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+
+    // Listen to messages using the Message model's method
+    Message.getChatMessages(widget.doctorId).listen((messages) {
+      setState(() {
+        _messages = messages;
+      });
+      _markMessagesAsRead();
+    });
   }
 
-  void _loadChatData() {
-    final doctor = _getDoctor();
-    // Get the chat data from doctor data to ensure consistency
-    _chatData = ChatPreview(
-      doctorId: doctor.id,
-      doctorName: doctor.name,
-      doctorSpecialty: doctor.specialty,
-      doctorImage: doctor.imageUrl,
-      lastMessage: _getLastMessage(),
-      timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      unreadCount: 0
-    );
+  Future<void> _markMessagesAsRead() async {
+    for (final message in _messages) {
+      if (!message.isRead && !message.isSent) {
+        await message.markAsRead();
+      }
+    }
   }
 
-  // Get doctor object from doctorId
-  Doctor _getDoctor() {
-    return Doctor.getDummyDoctors().firstWhere(
-      (doctor) => doctor.id == widget.doctorId,
-      orElse: () => Doctor.getDummyDoctors().first,
-    );
-  }
-
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) {
       return;
     }
 
-    final newMessage = Message(
+    final message = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      senderId: 'user1',
-      receiverId: 'doctor${widget.doctorId}',
+      senderId: _auth.currentUser?.uid ?? '',
+      receiverId: widget.doctorId,
       content: _messageController.text.trim(),
       timestamp: DateTime.now(),
       isRead: false,
       type: MessageType.text,
     );
 
-    setState(() {
-      _messages.add(newMessage);
-      _messageController.clear();
-    });
-    
-    // Scroll to bottom after adding new message
+    await message.send();
+    _messageController.clear();
     _scrollToBottom();
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _scrollToBottom() {
@@ -113,8 +117,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Get doctor object to ensure we're using the most up-to-date data
-    final doctor = _getDoctor();
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
     
@@ -134,10 +136,10 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Row(
           children: [
             Hero(
-              tag: 'doctor_${doctor.id}',
+              tag: 'doctor_${_doctor.id}',
               child: CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage(doctor.imageUrl),
+                backgroundImage: NetworkImage(_doctor.imageUrl),
                 onBackgroundImageError: (_, __) {},
               ),
             ),
@@ -147,7 +149,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dr. ${doctor.name}',
+                    'Dr. ${_doctor.name}',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -156,7 +158,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    doctor.specialty,
+                    _doctor.specialty,
                     style: TextStyle(
                       fontSize: 12,
                       color: isDarkMode ? AppTheme.darkTextSecondaryColor : AppTheme.textSecondaryColor,
@@ -185,7 +187,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Navigator.pushNamed(
                 context,
                 AppRoutes.videoCall,
-                arguments: doctor,
+                arguments: _doctor,
               );
             },
           ),
@@ -261,10 +263,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageItem(Message message, bool showAvatar, bool isDarkMode) {
     final isSent = message.isSent;
-    final doctor = _getDoctor();
 
     if (message.type == MessageType.image) {
-      return _buildImageMessage(message, isSent, showAvatar, doctor, isDarkMode);
+      return _buildImageMessage(message, isSent, showAvatar, isDarkMode);
     }
 
     return Padding(
@@ -280,7 +281,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (!isSent && showAvatar) ...[
             CircleAvatar(
               radius: 16,
-              backgroundImage: NetworkImage(doctor.imageUrl),
+              backgroundImage: NetworkImage(_doctor.imageUrl),
               onBackgroundImageError: (_, __) {},
             ),
             const SizedBox(width: 8),
@@ -374,7 +375,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildImageMessage(Message message, bool isSent, bool showAvatar, Doctor doctor, bool isDarkMode) {
+  Widget _buildImageMessage(Message message, bool isSent, bool showAvatar, bool isDarkMode) {
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
@@ -390,7 +391,7 @@ class _ChatScreenState extends State<ChatScreen> {
             if (!isSent && showAvatar) ...[
               CircleAvatar(
                 radius: 16,
-                backgroundImage: NetworkImage(doctor.imageUrl),
+                backgroundImage: NetworkImage(_doctor.imageUrl),
                 onBackgroundImageError: (_, __) {},
               ),
               const SizedBox(width: 8),
@@ -665,24 +666,5 @@ class _ChatScreenState extends State<ChatScreen> {
     final hour = timestamp.hour.toString().padLeft(2, '0');
     final minute = timestamp.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
-  }
-
-  // Helper method to get the most recent message for each doctor
-  String _getLastMessage() {
-    final doctor = _getDoctor();
-    switch (doctor.id) {
-      case '1': // Ahmed Kamal
-        return 'Great! I\'ll see you soon. Take care.';
-      case '2': // Nour El-Sayed 
-        return 'Please don\'t forget to bring your previous scan results.';
-      case '3': // Tarek Mahmoud
-        return 'Your test results look good. No need to worry.';
-      case '4': // Kareem Hossam
-        return 'Remember to take your medication regularly.';
-      case '5': // Yasmine Adel
-        return 'I\'ll see you at your next appointment.';
-      default:
-        return 'Thank you for your message.';
-    }
   }
 } 

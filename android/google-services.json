@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "782338679074",
+    "firebase_url": "https://medicare-app-final-default-rtdb.firebaseio.com",
+    "project_id": "medicare-app-final",
+    "storage_bucket": "medicare-app-final.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:782338679074:android:0b03d8c804fce9703c457b",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7-7tf3N5LTazC5Una68vv8NpLfU6YVJQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

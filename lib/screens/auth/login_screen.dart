@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../routes.dart';
+import '../../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,18 +24,63 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  String _getErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'user-not-found':
+        return 'No account found with this email. Please check your email or sign up.';
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'user-disabled':
+        return 'This account has been disabled. Please contact support.';
+      case 'too-many-requests':
+        return 'Too many failed attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      default:
+        return 'An error occurred. Please try again.';
+    }
+  }
+
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      // In a real app, perform authentication here
-      Navigator.pushReplacementNamed(context, '/home');
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      try {
+        final success = await authProvider.signIn(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        if (success && mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_getErrorMessage(e.toString())),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Dismiss',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
+            ),
+          );
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authProvider = Provider.of<AuthProvider>(context);
 
-    
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -45,11 +92,28 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 _buildHeader(theme),
                 const SizedBox(height: 40),
-                _buildLoginForm(theme),
+                if (authProvider.error != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      authProvider.error!,
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                _buildLoginForm(theme, authProvider),
                 const SizedBox(height: 24),
-                _buildSocialLogins(theme),
+                _buildSocialLogins(theme, authProvider),
                 const SizedBox(height: 24),
-                _buildFooter(theme),
+                _buildFooter(theme, authProvider),
               ],
             ),
           ),
@@ -61,12 +125,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
-        // Logo
         Container(
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            color: theme.colorScheme.primary.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -85,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Text(
           'Sign in to continue to MediCare',
           style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
           textAlign: TextAlign.center,
         ),
@@ -93,16 +156,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLoginForm(ThemeData theme) {
+  Widget _buildLoginForm(ThemeData theme, AuthProvider authProvider) {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Email Field
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            enabled: !authProvider.isLoading,
             decoration: const InputDecoration(
               labelText: 'Email',
               hintText: 'Enter your email',
@@ -119,10 +182,10 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
           const SizedBox(height: 20),
-          // Password Field
           TextFormField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
+            enabled: !authProvider.isLoading,
             decoration: InputDecoration(
               labelText: 'Password',
               hintText: 'Enter your password',
@@ -130,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
               suffixIcon: IconButton(
                 icon: Icon(
                   _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
                 onPressed: () {
                   setState(() {
@@ -150,71 +213,48 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
           const SizedBox(height: 16),
-          // Remember Me and Forgot Password
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: Checkbox(
-                      value: _rememberMe,
-                      activeColor: theme.colorScheme.primary,
-                      onChanged: (value) {
-                        setState(() {
-                          _rememberMe = value ?? false;
-                        });
-                      },
-                    ),
+                  Checkbox(
+                    value: _rememberMe,
+                    activeColor: theme.colorScheme.primary,
+                    onChanged: authProvider.isLoading
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _rememberMe = value ?? false;
+                            });
+                          },
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Remember me',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
+                  Text('Remember me'),
                 ],
               ),
               TextButton(
-                onPressed: () {
-                  // Navigate to forgot password screen
-                },
-                style: TextButton.styleFrom(
-                  minimumSize: Size.zero,
-                  padding: EdgeInsets.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                onPressed: authProvider.isLoading ? null : () {},
+                child: const Text('Forgot Password?'),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          // Login Button
           SizedBox(
             height: 56,
             child: ElevatedButton(
-              onPressed: _login,
+              onPressed: authProvider.isLoading ? null : _login,
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Sign In',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: authProvider.isLoading
+                  ? const CircularProgressIndicator(strokeWidth: 2)
+                  : const Text(
+                      'Sign In',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
             ),
           ),
         ],
@@ -222,7 +262,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialLogins(ThemeData theme) {
+  Widget _buildSocialLogins(ThemeData theme, AuthProvider authProvider) {
+    final isDark = theme.brightness == Brightness.dark;
     return Column(
       children: [
         Row(
@@ -233,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Text(
                 'Or Sign In With',
                 style: TextStyle(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                   fontSize: 14,
                 ),
               ),
@@ -245,26 +286,18 @@ class _LoginScreenState extends State<LoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildGoogleButton(
-              onTap: () {
-                // Google sign in
-              },
-            ),
+            _buildGoogleButton(onTap: () {}),
             const SizedBox(width: 20),
             _buildSocialButton(
               icon: Icons.facebook,
               color: Colors.blue.shade800,
-              onTap: () {
-                // Facebook sign in
-              },
+              onTap: () {},
             ),
             const SizedBox(width: 20),
             _buildSocialButton(
               icon: Icons.apple,
-              color: theme.colorScheme.brightness == Brightness.dark ? Colors.white : Colors.black,
-              onTap: () {
-                // Apple sign in
-              },
+              color: isDark ? Colors.white : Colors.black,
+              onTap: () {},
             ),
           ],
         ),
@@ -272,12 +305,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildGoogleButton({
-    required VoidCallback onTap,
-  }) {
+  Widget _buildGoogleButton({required VoidCallback onTap}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(50),
@@ -287,21 +318,10 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: BoxDecoration(
           color: isDark ? theme.colorScheme.surface : Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
         ),
         child: Center(
-          child: Image.asset(
-            'assets/icons/google_logo.png',
-            width: 35,
-            height: 35,
-          ),
+          child: Image.asset('assets/icons/google_logo.png', width: 35, height: 35),
         ),
       ),
     );
@@ -314,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -325,32 +345,24 @@ class _LoginScreenState extends State<LoginScreen> {
           color: isDark ? theme.colorScheme.surface : Colors.white,
           border: Border.all(
             color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-            width: 1,
           ),
         ),
-        child: Icon(
-          icon,
-          color: color,
-          size: 32,
-        ),
+        child: Icon(icon, color: color, size: 32),
       ),
     );
   }
 
-  Widget _buildFooter(ThemeData theme) {
+  Widget _buildFooter(ThemeData theme, AuthProvider authProvider) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          'Don\'t have an account? ',
-          style: TextStyle(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-        ),
+        const Text('Don\'t have an account? '),
         GestureDetector(
-          onTap: () {
-            Navigator.pushReplacementNamed(context, AppRoutes.register);
-          },
+          onTap: authProvider.isLoading
+              ? null
+              : () {
+                  Navigator.pushReplacementNamed(context, AppRoutes.register);
+                },
           child: Text(
             'Sign Up',
             style: TextStyle(

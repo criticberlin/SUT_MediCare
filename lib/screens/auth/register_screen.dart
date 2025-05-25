@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../routes.dart';
+import '../../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -9,15 +11,15 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
-  bool _agreeToTerms = false;
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _agreeToTerms = false;
+  String _selectedRole = 'patient'; // Default role
 
   @override
   void dispose() {
@@ -28,20 +30,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _register() {
-    if (_formKey.currentState!.validate() && _agreeToTerms) {
-      setState(() {
-        _isLoading = true;
-      });
+  String _getErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'email-already-in-use':
+        return 'This email is already in use. Try logging in instead.';
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      case 'weak-password':
+        return 'The password is too weak.';
+      case 'operation-not-allowed':
+        return 'Registration is currently disabled.';
+      default:
+        return 'An error occurred. Please try again.';
+    }
+  }
 
-      // Simulate registration delay
-      Future.delayed(const Duration(seconds: 2), () {
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-        });
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      });
+  Future<void> _register() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (_formKey.currentState!.validate() && _agreeToTerms) {
+      try {
+        final success = await authProvider.register(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          _nameController.text.trim(),
+          _selectedRole,
+        );
+
+        if (success && mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_getErrorMessage(e.toString())),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
     } else if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -55,7 +84,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -67,7 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 _buildHeader(theme),
                 const SizedBox(height: 40),
-                _buildRegisterForm(theme),
+                _buildRegisterForm(theme, authProvider),
                 const SizedBox(height: 24),
                 _buildFooter(theme),
               ],
@@ -77,16 +107,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-  
+
   Widget _buildHeader(ThemeData theme) {
     return Column(
       children: [
-        // Logo
         Container(
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            color: theme.colorScheme.primary.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -105,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           'Sign up to get started with MediCare',
           style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
           textAlign: TextAlign.center,
         ),
@@ -113,13 +142,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildRegisterForm(ThemeData theme) {
+  Widget _buildRegisterForm(ThemeData theme, AuthProvider authProvider) {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Name Field
           TextFormField(
             controller: _nameController,
             decoration: const InputDecoration(
@@ -135,10 +163,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
           ),
           const SizedBox(height: 20),
-          // Email Field
+          DropdownButtonFormField<String>(
+            value: _selectedRole,
+            decoration: const InputDecoration(
+              labelText: 'Role',
+              prefixIcon: Icon(Icons.work_outline),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'patient',
+                child: Text('Patient'),
+              ),
+              DropdownMenuItem(
+                value: 'doctor',
+                child: Text('Doctor'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  _selectedRole = value;
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 20),
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            enabled: !authProvider.isLoading,
             decoration: const InputDecoration(
               labelText: 'Email',
               hintText: 'Enter your email',
@@ -155,10 +208,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
           ),
           const SizedBox(height: 20),
-          // Password Field
           TextFormField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
+            enabled: !authProvider.isLoading,
             decoration: InputDecoration(
               labelText: 'Password',
               hintText: 'Create a password',
@@ -166,7 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               suffixIcon: IconButton(
                 icon: Icon(
                   _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
                 onPressed: () {
                   setState(() {
@@ -186,10 +239,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
           ),
           const SizedBox(height: 20),
-          // Confirm Password Field
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: !_isConfirmPasswordVisible,
+            enabled: !authProvider.isLoading,
             decoration: InputDecoration(
               labelText: 'Confirm Password',
               hintText: 'Confirm your password',
@@ -197,7 +250,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               suffixIcon: IconButton(
                 icon: Icon(
                   _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
                 onPressed: () {
                   setState(() {
@@ -225,15 +278,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 height: 24,
                 child: Checkbox(
                   value: _agreeToTerms,
-                  activeColor: theme.colorScheme.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _agreeToTerms = value ?? false;
-                    });
-                  },
+                  onChanged: authProvider.isLoading
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _agreeToTerms = value ?? false;
+                          });
+                        },
                 ),
               ),
               const SizedBox(width: 12),
@@ -241,12 +292,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: RichText(
                   text: TextSpan(
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
                     children: [
-                      const TextSpan(
-                        text: 'By signing up, you agree to our ',
-                      ),
+                      const TextSpan(text: 'By signing up, you agree to our '),
                       TextSpan(
                         text: 'Terms of Service',
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -254,9 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const TextSpan(
-                        text: ' and ',
-                      ),
+                      const TextSpan(text: ' and '),
                       TextSpan(
                         text: 'Privacy Policy',
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -271,29 +318,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ],
           ),
           const SizedBox(height: 32),
-          // Sign Up Button
           SizedBox(
             height: 56,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _register,
+              onPressed: authProvider.isLoading ? null : _register,
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: _isLoading 
-                ? const SizedBox(
-                    width: 24, 
-                    height: 24, 
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+              child: authProvider.isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Sign Up',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                  ),
             ),
           ),
         ],
@@ -308,7 +351,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Text(
           'Already have an account? ',
           style: TextStyle(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
         GestureDetector(
@@ -326,4 +369,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ],
     );
   }
-} 
+}

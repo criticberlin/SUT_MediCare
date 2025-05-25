@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/user.dart';
+import '../../models/user.dart' as app_user;
 import '../../utils/theme/app_theme.dart';
 import '../../utils/theme/theme_provider.dart';
 import '../../widgets/custom_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class MedicalHistoryScreen extends StatefulWidget {
   const MedicalHistoryScreen({super.key});
@@ -13,7 +15,7 @@ class MedicalHistoryScreen extends StatefulWidget {
 }
 
 class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with SingleTickerProviderStateMixin {
-  late User _user;
+  app_user.User? _user;
   final TextEditingController _allergiesController = TextEditingController();
   final TextEditingController _medicationsController = TextEditingController();
   final TextEditingController _conditionsController = TextEditingController();
@@ -22,6 +24,8 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   int _selectedCategory = 0;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
   
   final List<Map<String, dynamic>> _categories = [
     {
@@ -44,7 +48,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
   @override
   void initState() {
     super.initState();
-    _user = User.getCurrentUser();
+    _loadUserData();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -58,97 +62,174 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
     _animationController.forward();
   }
 
-  @override
-  void dispose() {
-    _allergiesController.dispose();
-    _medicationsController.dispose();
-    _conditionsController.dispose();
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  void _addAllergy(String allergy) {
-    if (allergy.isEmpty) return;
-    
-    setState(() {
-      List<String> allergies = List<String>.from(_user.allergies ?? []);
-      allergies.add(allergy);
-      _user = _user.copyWith(allergies: allergies);
-      _allergiesController.clear();
-    });
-    
-    _animationController.reset();
-    _animationController.forward();
-  }
-
-  void _removeAllergy(int index) {
-    setState(() {
-      List<String> allergies = List<String>.from(_user.allergies ?? []);
-      allergies.removeAt(index);
-      _user = _user.copyWith(allergies: allergies);
-    });
-  }
-
-  void _addMedication(String medication) {
-    if (medication.isEmpty) return;
-    
-    setState(() {
-      List<String> medications = List<String>.from(_user.medications ?? []);
-      medications.add(medication);
-      _user = _user.copyWith(medications: medications);
-      _medicationsController.clear();
-    });
-    
-    _animationController.reset();
-    _animationController.forward();
-  }
-
-  void _removeMedication(int index) {
-    setState(() {
-      List<String> medications = List<String>.from(_user.medications ?? []);
-      medications.removeAt(index);
-      _user = _user.copyWith(medications: medications);
-    });
-  }
-
-  void _addCondition(String condition) {
-    if (condition.isEmpty) return;
-    
-    setState(() {
-      List<String> conditions = List<String>.from(_user.chronicConditions ?? []);
-      conditions.add(condition);
-      _user = _user.copyWith(chronicConditions: conditions);
-      _conditionsController.clear();
-    });
-    
-    _animationController.reset();
-    _animationController.forward();
-  }
-
-  void _removeCondition(int index) {
-    setState(() {
-      List<String> conditions = List<String>.from(_user.chronicConditions ?? []);
-      conditions.removeAt(index);
-      _user = _user.copyWith(chronicConditions: conditions);
-    });
-  }
-
-  void _saveMedicalHistory() {
+  Future<void> _loadUserData() async {
     setState(() {
       _isLoading = true;
     });
 
-    // In a real app, this would save the updated user data to a database or API
-    // For now, we'll just simulate a delay
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
+    try {
+      final user = await app_user.User.getCurrentUser();
+      if (user != null) {
+        setState(() {
+          _user = user;
+        });
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      // Handle error appropriately
+    } finally {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _addAllergy(String allergy) async {
+    if (allergy.isEmpty || _user == null) return;
+    
+    try {
+      List<String> allergies = List<String>.from(_user!.allergies ?? []);
+      allergies.add(allergy);
+      
+      // Update in Firebase
+      await _database.ref('users/${_user!.id}/allergies').set(allergies);
+      
+      setState(() {
+        _user = _user!.copyWith(allergies: allergies);
+        _allergiesController.clear();
+      });
+      
+      _animationController.reset();
+      _animationController.forward();
+    } catch (e) {
+      print('Error adding allergy: $e');
+      // Handle error appropriately
+    }
+  }
+
+  Future<void> _removeAllergy(int index) async {
+    if (_user == null) return;
+    
+    try {
+      List<String> allergies = List<String>.from(_user!.allergies ?? []);
+      allergies.removeAt(index);
+      
+      // Update in Firebase
+      await _database.ref('users/${_user!.id}/allergies').set(allergies);
+      
+      setState(() {
+        _user = _user!.copyWith(allergies: allergies);
+      });
+    } catch (e) {
+      print('Error removing allergy: $e');
+      // Handle error appropriately
+    }
+  }
+
+  Future<void> _addMedication(String medication) async {
+    if (medication.isEmpty || _user == null) return;
+    
+    try {
+      List<String> medications = List<String>.from(_user!.medications ?? []);
+      medications.add(medication);
+      
+      // Update in Firebase
+      await _database.ref('users/${_user!.id}/medications').set(medications);
+      
+      setState(() {
+        _user = _user!.copyWith(medications: medications);
+        _medicationsController.clear();
+      });
+      
+      _animationController.reset();
+      _animationController.forward();
+    } catch (e) {
+      print('Error adding medication: $e');
+      // Handle error appropriately
+    }
+  }
+
+  Future<void> _removeMedication(int index) async {
+    if (_user == null) return;
+    
+    try {
+      List<String> medications = List<String>.from(_user!.medications ?? []);
+      medications.removeAt(index);
+      
+      // Update in Firebase
+      await _database.ref('users/${_user!.id}/medications').set(medications);
+      
+      setState(() {
+        _user = _user!.copyWith(medications: medications);
+      });
+    } catch (e) {
+      print('Error removing medication: $e');
+      // Handle error appropriately
+    }
+  }
+
+  Future<void> _addCondition(String condition) async {
+    if (condition.isEmpty || _user == null) return;
+    
+    try {
+      List<String> conditions = List<String>.from(_user!.chronicConditions ?? []);
+      conditions.add(condition);
+      
+      // Update in Firebase
+      await _database.ref('users/${_user!.id}/chronicConditions').set(conditions);
+      
+      setState(() {
+        _user = _user!.copyWith(chronicConditions: conditions);
+        _conditionsController.clear();
+      });
+      
+      _animationController.reset();
+      _animationController.forward();
+    } catch (e) {
+      print('Error adding condition: $e');
+      // Handle error appropriately
+    }
+  }
+
+  Future<void> _removeCondition(int index) async {
+    if (_user == null) return;
+    
+    try {
+      List<String> conditions = List<String>.from(_user!.chronicConditions ?? []);
+      conditions.removeAt(index);
+      
+      // Update in Firebase
+      await _database.ref('users/${_user!.id}/chronicConditions').set(conditions);
+      
+      setState(() {
+        _user = _user!.copyWith(chronicConditions: conditions);
+      });
+    } catch (e) {
+      print('Error removing condition: $e');
+      // Handle error appropriately
+    }
+  }
+
+  Future<void> _saveMedicalHistory() async {
+    if (_user == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Save all medical history data to Firebase
+      await _database.ref('users/${_user!.id}').update({
+        'allergies': _user!.allergies,
+        'medications': _user!.medications,
+        'chronicConditions': _user!.chronicConditions,
+      });
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
-            children: [
+            children: const [
               Icon(Icons.check_circle, color: Colors.white),
               SizedBox(width: 12),
               Text('Medical history updated successfully'),
@@ -159,10 +240,36 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          margin: EdgeInsets.all(8),
+          margin: const EdgeInsets.all(8),
         ),
       );
-    });
+    } catch (e) {
+      print('Error saving medical history: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Failed to update medical history'),
+            ],
+          ),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(8),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _changeCategory(int index) {
@@ -364,7 +471,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
             isDarkMode,
           ),
           const SizedBox(height: 24),
-          _user.allergies == null || _user.allergies!.isEmpty
+          _user?.allergies == null || _user!.allergies!.isEmpty
               ? _buildEmptyState(
                   Icons.dangerous_outlined, 
                   'No allergies recorded', 
@@ -372,7 +479,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
                   isDarkMode,
                 )
               : _buildItemsList(
-                  _user.allergies!, 
+                  _user!.allergies!, 
                   Icons.dangerous_outlined, 
                   Colors.redAccent,
                   _removeAllergy,
@@ -405,7 +512,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
             isDarkMode,
           ),
           const SizedBox(height: 24),
-          _user.medications == null || _user.medications!.isEmpty
+          _user?.medications == null || _user!.medications!.isEmpty
               ? _buildEmptyState(
                   Icons.medication_outlined, 
                   'No medications recorded', 
@@ -413,7 +520,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
                   isDarkMode,
                 )
               : _buildItemsList(
-                  _user.medications!, 
+                  _user!.medications!, 
                   Icons.medication_outlined, 
                   Colors.blueAccent,
                   _removeMedication,
@@ -446,7 +553,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
             isDarkMode,
           ),
           const SizedBox(height: 24),
-          _user.chronicConditions == null || _user.chronicConditions!.isEmpty
+          _user?.chronicConditions == null || _user!.chronicConditions!.isEmpty
               ? _buildEmptyState(
                   Icons.healing_outlined, 
                   'No chronic conditions recorded', 
@@ -454,7 +561,7 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> with Single
                   isDarkMode,
                 )
               : _buildItemsList(
-                  _user.chronicConditions!, 
+                  _user!.chronicConditions!, 
                   Icons.healing_outlined, 
                   Colors.orangeAccent,
                   _removeCondition,

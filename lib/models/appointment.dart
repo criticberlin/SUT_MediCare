@@ -1,4 +1,5 @@
-import '../widgets/appointment_card.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class Appointment {
   final String id;
@@ -27,58 +28,116 @@ class Appointment {
     this.prescriptionUrl,
   });
 
-  // Dummy data for appointment list
-  static List<Appointment> getDummyAppointments() {
-    return [
-      Appointment(
-        id: '1',
-        doctorId: '1',
-        doctorName: 'Dr. Ahmed Kamal',
-        doctorSpecialty: 'Orthopedic Surgeon',
-        doctorImage: 'https://img.freepik.com/free-photo/smiling-doctor-with-strethoscope-isolated-grey_651396-974.jpg',
-        date: DateTime.now().add(const Duration(days: 2)),
-        time: '10:00 AM',
-        duration: '30 mins',
-        status: AppointmentStatus.upcoming,
-        notes: 'Annual check-up for knee surgery recovery',
-      ),
-      Appointment(
-        id: '2',
-        doctorId: '2',
-        doctorName: 'Dr. Nour El-Sayed',
-        doctorSpecialty: 'Neurosurgeon',
-        doctorImage: 'https://img.freepik.com/free-photo/portrait-female-doctor-holding-plus-window_23-2150572356.jpg',
-        date: DateTime.now().add(const Duration(days: 5)),
-        time: '2:30 PM',
-        duration: '45 mins',
-        status: AppointmentStatus.upcoming,
-        notes: 'Follow-up consultation for headaches',
-      ),
-      Appointment(
-        id: '3',
-        doctorId: '4',
-        doctorName: 'Dr. Kareem Hossam',
-        doctorSpecialty: 'Cardiologist',
-        doctorImage: 'https://img.freepik.com/free-photo/male-nurse-with-stethoscope-uniform_23-2148124598.jpg',
-        date: DateTime.now().subtract(const Duration(days: 10)),
-        time: '9:15 AM',
-        duration: '60 mins',
-        status: AppointmentStatus.completed,
-        notes: 'Cardiac evaluation',
-        prescriptionUrl: 'assets/images/prescription_sample.jpg',
-      ),
-      Appointment(
-        id: '4',
-        doctorId: '3',
-        doctorName: 'Dr. Tarek Mahmoud',
-        doctorSpecialty: 'Infectious Diseases',
-        doctorImage: 'https://img.freepik.com/free-photo/doctor-smiling-offering-handshake_23-2148085248.jpg',
-        date: DateTime.now().subtract(const Duration(days: 5)),
-        time: '11:00 AM',
-        duration: '30 mins',
-        status: AppointmentStatus.cancelled,
-        notes: 'Consultation for recurring fever',
-      ),
-    ];
+  // Convert Appointment object to Map
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'doctorId': doctorId,
+      'doctorName': doctorName,
+      'doctorSpecialty': doctorSpecialty,
+      'doctorImage': doctorImage,
+      'date': date.toIso8601String(),
+      'time': time,
+      'duration': duration,
+      'status': status.toString(),
+      'notes': notes,
+      'prescriptionUrl': prescriptionUrl,
+    };
   }
+
+  // Create Appointment object from Map
+  factory Appointment.fromMap(Map<String, dynamic> map) {
+    return Appointment(
+      id: map['id'] ?? '',
+      doctorId: map['doctorId'] ?? '',
+      doctorName: map['doctorName'] ?? '',
+      doctorSpecialty: map['doctorSpecialty'] ?? '',
+      doctorImage: map['doctorImage'] ?? '',
+      date: DateTime.parse(map['date'] ?? DateTime.now().toIso8601String()),
+      time: map['time'] ?? '',
+      duration: map['duration'] ?? '',
+      status: AppointmentStatus.values.firstWhere(
+        (e) => e.toString() == map['status'],
+        orElse: () => AppointmentStatus.upcoming,
+      ),
+      notes: map['notes'],
+      prescriptionUrl: map['prescriptionUrl'],
+    );
+  }
+
+  // Get appointments for current user
+  static Stream<List<Appointment>> getUserAppointments() async* {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    final database = FirebaseDatabase.instance;
+    final appointmentsRef = database.ref('appointments')
+        .orderByChild('userId')
+        .equalTo(currentUserId);
+
+    yield* appointmentsRef.onValue.map((event) {
+      if (!event.snapshot.exists) return [];
+
+      final List<Appointment> appointments = [];
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
+      
+      data.forEach((key, value) {
+        appointments.add(Appointment.fromMap(Map<String, dynamic>.from(value)));
+      });
+
+      appointments.sort((a, b) => a.date.compareTo(b.date));
+      return appointments;
+    });
+  }
+
+  // Get appointments for a specific doctor
+  static Stream<List<Appointment>> getDoctorAppointments(String doctorId) async* {
+    final database = FirebaseDatabase.instance;
+    final appointmentsRef = database.ref('appointments')
+        .orderByChild('doctorId')
+        .equalTo(doctorId);
+
+    yield* appointmentsRef.onValue.map((event) {
+      if (!event.snapshot.exists) return [];
+
+      final List<Appointment> appointments = [];
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
+      
+      data.forEach((key, value) {
+        appointments.add(Appointment.fromMap(Map<String, dynamic>.from(value)));
+      });
+
+      appointments.sort((a, b) => a.date.compareTo(b.date));
+      return appointments;
+    });
+  }
+
+  // Create a new appointment
+  Future<void> create() async {
+    final database = FirebaseDatabase.instance;
+    final appointmentsRef = database.ref('appointments').push();
+    await appointmentsRef.set(toMap());
+  }
+
+  // Update appointment status
+  Future<void> updateStatus(AppointmentStatus newStatus) async {
+    final database = FirebaseDatabase.instance;
+    await database.ref('appointments/$id').update({'status': newStatus.toString()});
+  }
+
+  // Cancel appointment
+  Future<void> cancel() async {
+    await updateStatus(AppointmentStatus.cancelled);
+  }
+
+  // Complete appointment
+  Future<void> complete() async {
+    await updateStatus(AppointmentStatus.completed);
+  }
+}
+
+enum AppointmentStatus {
+  upcoming,
+  completed,
+  cancelled,
 } 
